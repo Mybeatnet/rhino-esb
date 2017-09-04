@@ -6,6 +6,7 @@ using Rhino.ServiceBus.Msmq;
 using Rhino.ServiceBus.Internal;
 using System.Messaging;
 using Rhino.ServiceBus.Msmq.TransportActions;
+using Rhino.ServiceBus.Transport;
 
 namespace Rhino.ServiceBus.Config
 {
@@ -59,6 +60,11 @@ namespace Rhino.ServiceBus.Config
             else
                 b.RegisterSingleton<IQueueStrategy>(() => (IQueueStrategy)new SubQueueStrategy());
 
+            if (c.UseDtc)
+                b.RegisterSingleton<ITransactionStrategy>(() => new TransactionScopeStrategy());
+            else
+                b.RegisterSingleton<ITransactionStrategy>(() => new MsmqTransactionStrategy());
+
             b.RegisterSingleton<IMessageBuilder<Message>>(() => (IMessageBuilder<Message>)new MsmqMessageBuilder(
                 l.Resolve<IMessageSerializer>(),
                 l.Resolve<IServiceLocator>()));
@@ -74,7 +80,7 @@ namespace Rhino.ServiceBus.Config
                 l.Resolve<IEndpointRouter>(),
                 l.Resolve<IQueueStrategy>()));
 
-            b.RegisterSingleton<ITransport>(() => (ITransport)new MsmqTransport(
+            b.RegisterSingleton<ITransport>(() => (ITransport) new MsmqTransport(
                 l.Resolve<IMessageSerializer>(),
                 l.Resolve<IQueueStrategy>(),
                 c.Endpoint,
@@ -84,7 +90,8 @@ namespace Rhino.ServiceBus.Config
                 c.IsolationLevel,
                 c.Transactional,
                 c.ConsumeInTransaction,
-                l.Resolve<IMessageBuilder<Message>>()));
+                l.Resolve<IMessageBuilder<Message>>(),
+                l.Resolve<ITransactionStrategy>()));
 
             b.RegisterAll<IMsmqTransportAction>(typeof(ErrorAction));
         }

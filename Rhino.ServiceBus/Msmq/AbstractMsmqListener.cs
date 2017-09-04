@@ -2,7 +2,6 @@ using System;
 using System.Diagnostics;
 using System.Messaging;
 using System.Threading;
-using System.Transactions;
 using Common.Logging;
 using Rhino.ServiceBus.Impl;
 using Rhino.ServiceBus.Internal;
@@ -14,6 +13,7 @@ namespace Rhino.ServiceBus.Msmq
 {
     public abstract class AbstractMsmqListener : IStartable
     {
+        private readonly ITransactionStrategy _transactionStrategy;
         private readonly IQueueStrategy queueStrategy;
         private readonly Uri endpoint;
         private readonly Thread[] threads;
@@ -37,7 +37,8 @@ namespace Rhino.ServiceBus.Msmq
             IMessageSerializer messageSerializer,
             IEndpointRouter endpointRouter, 
 			TransactionalOptions transactional,
-            IMessageBuilder<Message> messageBuilder)
+            IMessageBuilder<Message> messageBuilder, 
+            ITransactionStrategy transactionStrategy)
         {
             this.queueStrategy = queueStrategy;
         	this.messageSerializer = messageSerializer;
@@ -62,6 +63,7 @@ namespace Rhino.ServiceBus.Msmq
         			throw new ArgumentOutOfRangeException("transactional");
         	}
             this.messageBuilder = messageBuilder;
+            _transactionStrategy = transactionStrategy;
             this.messageBuilder.Initialize(Endpoint);
         }
 
@@ -192,7 +194,7 @@ namespace Rhino.ServiceBus.Msmq
                     if ((MessageType)((message.AppSpecific & 0xFFFF0000) >> 16) == MessageType.MoveMessageMarker)
                     {
                         var subQueue = (SubQueue)(0x0000FFFF & message.AppSpecific);
-                        using (var tx = new TransactionScope())
+                        using (var tx = _transactionStrategy.Begin())
                         {
                             string msgId;
                             queueStrategy.TryMoveMessage(queue, message, subQueue, out msgId);

@@ -4,6 +4,7 @@ using Rhino.ServiceBus.Impl;
 using Rhino.ServiceBus.RhinoQueues;
 using Rhino.Queues;
 using Rhino.ServiceBus.Internal;
+using Rhino.ServiceBus.Transport;
 
 namespace Rhino.ServiceBus.Config
 {
@@ -47,7 +48,8 @@ namespace Rhino.ServiceBus.Config
                 c.NumberOfRetries,
                 busConfig.EnablePerformanceCounters,
                 l.Resolve<IMessageBuilder<MessagePayload>>(),
-                queueManagerConfiguration));
+                queueManagerConfiguration,
+                l.Resolve<ITransactionStrategy>()));
 
             b.RegisterSingleton<IMessageBuilder<MessagePayload>>(() => (IMessageBuilder<MessagePayload>)new RhinoQueuesMessageBuilder(
                 l.Resolve<IMessageSerializer>(),

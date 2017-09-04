@@ -4,6 +4,7 @@ using Rhino.ServiceBus.Impl;
 using Rhino.ServiceBus.RhinoQueues;
 using Rhino.ServiceBus.Internal;
 using Rhino.Queues;
+using Rhino.ServiceBus.Transport;
 
 namespace Rhino.ServiceBus.Config
 {
@@ -42,7 +43,8 @@ namespace Rhino.ServiceBus.Config
                 busConfig.QueuePath,
                 busConfig.EnablePerformanceCounters,
                 l.Resolve<IMessageBuilder<MessagePayload>>(),
-                queueManagerConfiguration));
+                queueManagerConfiguration,
+                l.Resolve<ITransactionStrategy>()));
 
             b.RegisterSingleton<QueueManagerConfiguration>(() => queueManagerConfiguration);
         }

@@ -8,6 +8,7 @@ using Rhino.ServiceBus.Castle;
 using Rhino.ServiceBus.Impl;
 using Rhino.ServiceBus.RhinoQueues;
 using Rhino.ServiceBus.Serializers;
+using Rhino.ServiceBus.Transport;
 using Xunit;
 
 namespace Rhino.ServiceBus.Tests.RhinoQueues
@@ -36,7 +37,8 @@ namespace Rhino.ServiceBus.Tests.RhinoQueues
                 5,
                 false,
                 new RhinoQueuesMessageBuilder(messageSerializer, serviceLocator),
-                new QueueManagerConfiguration()
+                new QueueManagerConfiguration(),
+                new TransactionScopeStrategy()
                 );
             transport.Start();
         }

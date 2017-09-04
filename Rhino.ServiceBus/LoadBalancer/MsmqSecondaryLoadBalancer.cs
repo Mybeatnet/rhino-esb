@@ -7,6 +7,7 @@ using Common.Logging;
 using Rhino.ServiceBus.Internal;
 using Rhino.ServiceBus.Messages;
 using Rhino.ServiceBus.Msmq;
+using Rhino.ServiceBus.Transport;
 using Timeout = Rhino.ServiceBus.DataStructures.Timeout;
 
 namespace Rhino.ServiceBus.LoadBalancer
@@ -42,8 +43,9 @@ namespace Rhino.ServiceBus.LoadBalancer
             Uri primaryLoadBalancer,
             int threadCount,
 			TransactionalOptions transactional,
-            IMessageBuilder<Message> messageBuilder)
-			: base(serializer, queueStrategy, endpointRouter, endpoint, threadCount, transactional, messageBuilder)
+            IMessageBuilder<Message> messageBuilder,
+            ITransactionStrategy transactionStrategy)
+			: base(serializer, queueStrategy, endpointRouter, endpoint, threadCount, transactional, messageBuilder, transactionStrategy)
         {
             TimeoutForHeartBeatFromPrimary = TimeSpan.FromSeconds(10);
             this.primaryLoadBalancer = primaryLoadBalancer;

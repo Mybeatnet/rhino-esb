@@ -197,9 +197,11 @@
     <Compile Include="Messages\MergeSagaState.cs" />
     <Compile Include="Messages\ReadyToWork.cs" />
     <Compile Include="Msmq\AbstractMsmqListener.cs" />
+    <Compile Include="Transport\ITransactionStrategy.cs" />
     <Compile Include="Msmq\QueueCreationModule.cs" />
     <Compile Include="OutgoingMessageInformation.cs" />
     <Compile Include="ServiceBusExtensions.cs" />
+    <Compile Include="Transport\MsmqTransactionStrategy.cs" />
     <Compile Include="Transport\SubQueue.cs" />
     <Compile Include="Msmq\TransportActions\ShutDownAction.cs" />
     <Compile Include="Msmq\TransportState.cs" />
@@ -237,6 +239,7 @@
     <Compile Include="Msmq\TransportActions\AbstractTransportAction.cs" />
     <Compile Include="Msmq\TransportActions\IMsmqTransportAction.cs" />
     <Compile Include="Msmq\TransportActions\TimeoutAction.cs" />
+    <Compile Include="Transport\TransactionScopeStrategy.cs" />
     <Compile Include="Transport\TypeAndUriKey.cs" />
     <Compile Include="OccasionalConsumerOf.cs" />
     <Compile Include="Internal\IAccessibleSaga.cs" />

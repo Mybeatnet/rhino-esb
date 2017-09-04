@@ -1,13 +1,13 @@
 ﻿using System;
-using System.Transactions;
 using Common.Logging;
 using Rhino.ServiceBus.Impl;
+using Rhino.ServiceBus.Msmq;
 
 namespace Rhino.ServiceBus.Transport
 {
 	public class MessageHandlingCompletion
 	{
-		private readonly TransactionScope tx;
+		private readonly IRsbTransaction tx;
 		private readonly Action sendMessageBackToQueue;
 		private readonly Action<CurrentMessageInformation, Exception> messageCompleted;
 		private readonly Action<CurrentMessageInformation> beforeTransactionCommit;
@@ -18,7 +18,7 @@ namespace Rhino.ServiceBus.Transport
 
 		private Exception exception;
 
-        public MessageHandlingCompletion(TransactionScope tx, Action sendMessageBackToQueue, Exception exception, Action<CurrentMessageInformation, Exception> messageCompleted, Action<CurrentMessageInformation> beforeTransactionCommit, Action<CurrentMessageInformation> beforeTransactionRollback, ILog logger, Action<CurrentMessageInformation, Exception> messageProcessingFailure, CurrentMessageInformation currentMessageInformation)
+        public MessageHandlingCompletion(IRsbTransaction tx, Action sendMessageBackToQueue, Exception exception, Action<CurrentMessageInformation, Exception> messageCompleted, Action<CurrentMessageInformation> beforeTransactionCommit, Action<CurrentMessageInformation> beforeTransactionRollback, ILog logger, Action<CurrentMessageInformation, Exception> messageProcessingFailure, CurrentMessageInformation currentMessageInformation)
 		{
 			this.tx = tx;
 			this.sendMessageBackToQueue = sendMessageBackToQueue;

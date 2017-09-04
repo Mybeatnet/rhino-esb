@@ -16,6 +16,7 @@ using ErrorAction = Rhino.ServiceBus.Msmq.TransportActions.ErrorAction;
 using LoadBalancerConfiguration = Rhino.ServiceBus.LoadBalancer.LoadBalancerConfiguration;
 using System.Collections.Generic;
 using System.Reflection;
+using Rhino.ServiceBus.Transport;
 
 namespace Rhino.ServiceBus.Spring
 {
@@ -75,14 +76,15 @@ namespace Rhino.ServiceBus.Spring
             var loadBalancerConfig = (LoadBalancerConfiguration)config;
 
             applicationContext.RegisterSingleton(() =>
-                {
-                    MsmqLoadBalancer balancer = new MsmqLoadBalancer(applicationContext.Get<IMessageSerializer>(),
-                                                                            applicationContext.Get<IQueueStrategy>(),
-                                                                            applicationContext.Get<IEndpointRouter>(),
-                                                                            loadBalancerConfig.Endpoint,
-                                                                            loadBalancerConfig.ThreadCount,
-                                                                            loadBalancerConfig.Transactional,
-                                                                            applicationContext.Get<IMessageBuilder<Message>>());
+            {
+                MsmqLoadBalancer balancer = new MsmqLoadBalancer(applicationContext.Get<IMessageSerializer>(),
+                    applicationContext.Get<IQueueStrategy>(),
+                    applicationContext.Get<IEndpointRouter>(),
+                    loadBalancerConfig.Endpoint,
+                    loadBalancerConfig.ThreadCount,
+                    loadBalancerConfig.Transactional,
+                    applicationContext.Get<IMessageBuilder<Message>>(),
+                    applicationContext.Get<ITransactionStrategy>());
                     balancer.ReadyForWorkListener = applicationContext.Get<MsmqReadyForWorkListener>();
                     return balancer;
                 });
@@ -95,15 +97,17 @@ namespace Rhino.ServiceBus.Spring
             var loadBalancerConfig = (LoadBalancerConfiguration)config;
 
             applicationContext.RegisterSingleton<MsmqLoadBalancer>(() =>
-                {
-                    MsmqSecondaryLoadBalancer balancer = new MsmqSecondaryLoadBalancer(applicationContext.Get<IMessageSerializer>(),
-                                                                                                        applicationContext.Get<IQueueStrategy>(),
-                                                                                                        applicationContext.Get<IEndpointRouter>(),
-                                                                                                        loadBalancerConfig.Endpoint,
-                                                                                                        loadBalancerConfig.PrimaryLoadBalancer,
-                                                                                                        loadBalancerConfig.ThreadCount,
-                                                                                                        loadBalancerConfig.Transactional,
-                                                                                                        applicationContext.Get<IMessageBuilder<Message>>());
+            {
+                MsmqSecondaryLoadBalancer balancer =
+                    new MsmqSecondaryLoadBalancer(applicationContext.Get<IMessageSerializer>(),
+                        applicationContext.Get<IQueueStrategy>(),
+                        applicationContext.Get<IEndpointRouter>(),
+                        loadBalancerConfig.Endpoint,
+                        loadBalancerConfig.PrimaryLoadBalancer,
+                        loadBalancerConfig.ThreadCount,
+                        loadBalancerConfig.Transactional,
+                        applicationContext.Get<IMessageBuilder<Message>>(),
+                        applicationContext.Get<ITransactionStrategy>());
                     balancer.ReadyForWorkListener = applicationContext.Get<MsmqReadyForWorkListener>();
                     return balancer;
                 });
@@ -115,13 +119,15 @@ namespace Rhino.ServiceBus.Spring
         {
             var loadBalancerConfig = (LoadBalancerConfiguration)config;
 
-            applicationContext.RegisterSingleton(() => new MsmqReadyForWorkListener(applicationContext.Get<IQueueStrategy>(),
-                                                                                    loadBalancerConfig.ReadyForWork,
-                                                                                    loadBalancerConfig.ThreadCount,
-                                                                                    applicationContext.Get<IMessageSerializer>(),
-                                                                                    applicationContext.Get<IEndpointRouter>(),
-                                                                                    loadBalancerConfig.Transactional,
-                                                                                    applicationContext.Get<IMessageBuilder<Message>>()));
+            applicationContext.RegisterSingleton(
+                () => new MsmqReadyForWorkListener(applicationContext.Get<IQueueStrategy>(),
+                    loadBalancerConfig.ReadyForWork,
+                    loadBalancerConfig.ThreadCount,
+                    applicationContext.Get<IMessageSerializer>(),
+                    applicationContext.Get<IEndpointRouter>(),
+                    loadBalancerConfig.Transactional,
+                    applicationContext.Get<IMessageBuilder<Message>>(),
+                    applicationContext.Get<ITransactionStrategy>()));
 
             applicationContext.RegisterSingleton<IDeploymentAction>(() => new CreateReadyForWorkQueuesAction(applicationContext.Get<IQueueStrategy>(), applicationContext.Get<MsmqReadyForWorkListener>()));
         }

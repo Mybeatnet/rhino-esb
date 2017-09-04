@@ -38,7 +38,8 @@ namespace Rhino.ServiceBus.Tests.RhinoQueues
                 5,
                 false,
                 new RhinoQueuesMessageBuilder(messageSerializer, serviceLocator),
-                new QueueManagerConfiguration()
+                new QueueManagerConfiguration(),
+                new TransactionScopeStrategy()
                 );
             transport.Start();
         }

@@ -1,6 +1,7 @@
 using System;
 using System.ComponentModel;
 using System.Messaging;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Transactions;
 using Rhino.ServiceBus.Exceptions;
@@ -11,6 +12,10 @@ namespace Rhino.ServiceBus.Msmq
 {
     public static class MsmqExtensions
     {
+        private static PropertyInfo _internalTransaction =
+            typeof(MessageQueueTransaction).GetProperty("InnerTransaction",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+
         public static string EnsureLabelLength(this string label)
         {
             if (label.Length > 249)
@@ -27,10 +32,29 @@ namespace Rhino.ServiceBus.Msmq
         public static Guid GetMessageId(this Message self)
         {
             if (self.Extension.Length < 16)
-                throw new InvalidOperationException("Message is not in a format that the bus can understand, Message's Extension is not a Guid");
+                throw new InvalidOperationException(
+                    "Message is not in a format that the bus can understand, Message's Extension is not a Guid");
             var guid = new byte[16];
             Buffer.BlockCopy(self.Extension, 0, guid, 0, 16);
             return new Guid(guid);
+        }
+
+        private static GCHandle? GetTransaction()
+        {
+            var current = Transaction.Current;
+            if (current != null)
+            {
+                var trans = TransactionInterop.GetDtcTransaction(current);
+                return GCHandle.Alloc(trans);
+            }
+            var curMq = MsmqTransactionStrategy.Current;
+            if (curMq != null)
+            {
+                var trans = _internalTransaction.GetValue(curMq, null);
+                return GCHandle.Alloc(trans);
+            }
+
+            return null;
         }
 
         public static void MoveToSubQueue(
@@ -41,27 +65,27 @@ namespace Rhino.ServiceBus.Msmq
             var fullSubQueueName = @"DIRECT=OS:.\" + queue.QueueName + ";" + subQueueName;
             IntPtr queueHandle = IntPtr.Zero;
             var error = NativeMethods.MQOpenQueue(fullSubQueueName, NativeMethods.MQ_MOVE_ACCESS,
-                                                   NativeMethods.MQ_DENY_NONE, ref queueHandle);
+                NativeMethods.MQ_DENY_NONE, ref queueHandle);
             if (error != 0)
                 throw new TransportException("Failed to open queue: " + fullSubQueueName,
                     new Win32Exception(error));
+
+
+            GCHandle? gch = null;
             try
             {
-                Transaction current = Transaction.Current;
-                IDtcTransaction transaction = null;
-                if (current != null && queue.Transactional)
-                {
-                    transaction = TransactionInterop.GetDtcTransaction(current);
-                }
+                gch = GetTransaction();
 
                 error = NativeMethods.MQMoveMessage(queue.ReadHandle, queueHandle,
-                    message.LookupId, transaction);
+                    message.LookupId, gch?.AddrOfPinnedObject() ?? IntPtr.Zero);
                 if (error != 0)
                     throw new TransportException("Failed to move message to queue: " + fullSubQueueName,
                         new Win32Exception(error));
             }
             finally
             {
+                gch?.Free();
+
                 error = NativeMethods.MQCloseQueue(queueHandle);
                 if (error != 0)
                     throw new TransportException("Failed to close queue: " + fullSubQueueName,
@@ -69,7 +93,7 @@ namespace Rhino.ServiceBus.Msmq
 
             }
         }
-		
+
         /// <summary>
         /// Gets the count.
         /// http://blog.codebeside.org/archive/2008/08/27/counting-the-number-of-messages-in-a-message-queue-in.aspx
@@ -83,14 +107,15 @@ namespace Rhino.ServiceBus.Msmq
                 return 0;
             }
 
-            var props = new NativeMethods.MQMGMTPROPS { cProp = 1 };
+            var props = new NativeMethods.MQMGMTPROPS {cProp = 1};
             try
             {
                 props.aPropID = Marshal.AllocHGlobal(sizeof(int));
                 Marshal.WriteInt32(props.aPropID, NativeMethods.PROPID_MGMT_QUEUE_MESSAGE_COUNT);
 
                 props.aPropVar = Marshal.AllocHGlobal(Marshal.SizeOf(typeof(NativeMethods.MQPROPVariant)));
-                Marshal.StructureToPtr(new NativeMethods.MQPROPVariant { vt = NativeMethods.VT_NULL }, props.aPropVar, false);
+                Marshal.StructureToPtr(new NativeMethods.MQPROPVariant {vt = NativeMethods.VT_NULL}, props.aPropVar,
+                    false);
 
                 props.status = Marshal.AllocHGlobal(sizeof(int));
                 Marshal.WriteInt32(props.status, 0);
@@ -104,7 +129,9 @@ namespace Rhino.ServiceBus.Msmq
                     return 0;
                 }
 
-                var propVar = (NativeMethods.MQPROPVariant)Marshal.PtrToStructure(props.aPropVar, typeof(NativeMethods.MQPROPVariant));
+                var propVar =
+                    (NativeMethods.MQPROPVariant)
+                    Marshal.PtrToStructure(props.aPropVar, typeof(NativeMethods.MQPROPVariant));
                 if (propVar.vt != NativeMethods.VT_UI4)
                 {
                     return 0;
@@ -123,8 +150,57 @@ namespace Rhino.ServiceBus.Msmq
         }
 
 
+        public static void TransactionalSend(this MessageQueue self, Message message)
+        {
+            if (Transaction.Current != null)
+            {
+                self.Send(message, MessageQueueTransactionType.Automatic);
+                return;
+            }
+
+            var mqt = MsmqTransactionStrategy.Current;
+            if (mqt != null)
+            {
+                self.Send(message, mqt);
+                return;
+            }
+
+            self.Send(message, MessageQueueTransactionType.Single);
+        }
+
+        public static Message TransactionalReceiveById(this MessageQueue self, string id)
+        {
+            if (Transaction.Current != null)
+                return self.ReceiveById(id, MessageQueueTransactionType.Automatic);
+
+            var mqt = MsmqTransactionStrategy.Current;
+            if (mqt != null)
+                return self.ReceiveById(id, mqt);
+
+            return self.ReceiveById(id, MessageQueueTransactionType.Single);
+        }
+
+        public static Message TransactionalReceive(this MessageQueue self)
+        {
+            if (Transaction.Current != null)
+                return self.Receive(MessageQueueTransactionType.Automatic);
+
+            var mqt = MsmqTransactionStrategy.Current;
+            if (mqt != null)
+                return self.Receive(mqt);
+
+            return self.Receive(MessageQueueTransactionType.Single);
+        }
+
+        public static Message TransactionalRemoveCurrent(this MessageEnumerator self)
+        {
+            if (Transaction.Current != null)
+                return self.RemoveCurrent(MessageQueueTransactionType.Automatic);
+            var mqt = MsmqTransactionStrategy.Current;
+            if (mqt != null)
+                return self.RemoveCurrent(mqt);
+
+            return self.RemoveCurrent(MessageQueueTransactionType.Single);
+        }
     }
-
-
-
 }
