@@ -1,6 +1,8 @@
 ﻿
-Microsoft Visual Studio Solution File, Format Version 11.00
-# Visual Studio 2010
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 14
+VisualStudioVersion = 14.0.25420.1
+MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Starbucks", "Starbucks", "{64DC50EF-F634-4E75-8375-ACC6D42E2DB4}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rhino.ServiceBus", "Rhino.ServiceBus\Rhino.ServiceBus.csproj", "{1B21C8A5-5E0E-412B-A7F4-9F28B4427F21}"
@@ -26,6 +28,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rhino.ServiceBus.Spring", "Rhino.ServiceBus.Spring\Rhino.ServiceBus.Spring.csproj", "{E18B8442-40AF-F3A1-9FB0-F1C5FC994CEA}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rhino.ServiceBus.RhinoQueues", "Rhino.ServiceBus.RhinoQueues\Rhino.ServiceBus.RhinoQueues.csproj", "{9748B2BF-41EA-487A-944C-A4ABEFFA2087}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rhino.ServiceBus.RabbitMQ", "Rhino.ServiceBus.RabbitMQ\Rhino.ServiceBus.RabbitMQ.csproj", "{28827711-5FAA-4845-AF3A-F57916600FA2}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -149,6 +153,18 @@ Global
 		{9748B2BF-41EA-487A-944C-A4ABEFFA2087}.Release|Any CPU.Build.0 = Release|Any CPU
 		{9748B2BF-41EA-487A-944C-A4ABEFFA2087}.Release|x64.ActiveCfg = Release|x64
 		{9748B2BF-41EA-487A-944C-A4ABEFFA2087}.Release|x86.ActiveCfg = Release|x86
+		{28827711-5FAA-4845-AF3A-F57916600FA2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{28827711-5FAA-4845-AF3A-F57916600FA2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{28827711-5FAA-4845-AF3A-F57916600FA2}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{28827711-5FAA-4845-AF3A-F57916600FA2}.Debug|x64.Build.0 = Debug|Any CPU
+		{28827711-5FAA-4845-AF3A-F57916600FA2}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{28827711-5FAA-4845-AF3A-F57916600FA2}.Debug|x86.Build.0 = Debug|Any CPU
+		{28827711-5FAA-4845-AF3A-F57916600FA2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{28827711-5FAA-4845-AF3A-F57916600FA2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{28827711-5FAA-4845-AF3A-F57916600FA2}.Release|x64.ActiveCfg = Release|Any CPU
+		{28827711-5FAA-4845-AF3A-F57916600FA2}.Release|x64.Build.0 = Release|Any CPU
+		{28827711-5FAA-4845-AF3A-F57916600FA2}.Release|x86.ActiveCfg = Release|Any CPU
+		{28827711-5FAA-4845-AF3A-F57916600FA2}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -156,8 +172,8 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{0FC43226-8030-46FC-A2AB-D064207FF364} = {64DC50EF-F634-4E75-8375-ACC6D42E2DB4}
 		{EBCAD5F6-F6A4-47C8-B8B5-F92E26CBACDA} = {64DC50EF-F634-4E75-8375-ACC6D42E2DB4}
-		{C0B1E3BD-3481-4E0E-866F-5BEC471C2F4C} = {2271E8BF-21FF-40B1-A284-F707951F5EA2}
 		{4D65E756-C0C9-42AA-9B73-75E85E77EA7B} = {2271E8BF-21FF-40B1-A284-F707951F5EA2}
+		{C0B1E3BD-3481-4E0E-866F-5BEC471C2F4C} = {2271E8BF-21FF-40B1-A284-F707951F5EA2}
 		{E18B8442-40AF-4FA2-9FB0-FC05FC994CEA} = {2271E8BF-21FF-40B1-A284-F707951F5EA2}
 		{DB720C4D-1508-4510-AED4-80C905095CE5} = {2271E8BF-21FF-40B1-A284-F707951F5EA2}
 		{E18B8442-40AF-F3A1-9FB0-F1C5FC994CEA} = {2271E8BF-21FF-40B1-A284-F707951F5EA2}
