@@ -98,7 +98,9 @@ namespace Rhino.ServiceBus.Msmq
 		{
 			try
 			{
-			    return queue.TransactionalReceiveById(messageId);
+                if (IsTransactional)
+			        return queue.TransactionalReceiveById(messageId);
+			    return queue.ReceiveById(messageId);
 			}
 			catch (InvalidOperationException)// message was read before we could read it
 			{
@@ -114,12 +116,14 @@ namespace Rhino.ServiceBus.Msmq
 			return new OpenedQueue(this, messageQueue, queueUrl+";"+subQueue);
 		}
 
-		public Message ReceiveById(string id)
-		{
-		    return queue.TransactionalReceiveById(id);
-		}
+	    public Message ReceiveById(string id)
+	    {
+	        if (IsTransactional)
+	            return queue.TransactionalReceiveById(id);
+	        return queue.ReceiveById(id);
+	    }
 
-		public MessageEnumerator GetMessageEnumerator2()
+	    public MessageEnumerator GetMessageEnumerator2()
 		{
 			return queue.GetMessageEnumerator2();
 		}

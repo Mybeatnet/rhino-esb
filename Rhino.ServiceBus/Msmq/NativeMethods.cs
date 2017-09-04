@@ -16,7 +16,10 @@ namespace Rhino.ServiceBus.Msmq
         public static extern int MQCloseQueue(IntPtr queue);
 
         [DllImport("mqrt.dll")]
-        public static extern int MQMoveMessage(IntPtr sourceQueue, IntPtr targetQueue, long lookupID, IntPtr transaction);
+        public static extern int MQMoveMessage(IntPtr sourceQueue, IntPtr targetQueue, long lookupID, object transaction);
+
+        [DllImport("mqrt.dll")]
+        public static extern int MQMoveMessage(IntPtr sourceQueue, IntPtr targetQueue, long lookupID, IDtcTransaction transaction);
 
         [DllImport("mqrt.dll")]
         internal static extern int MQMgmtGetInfo([MarshalAs(UnmanagedType.BStr)]string computerName, [MarshalAs(UnmanagedType.BStr)]string objectName, ref MQMGMTPROPS mgmtProps);

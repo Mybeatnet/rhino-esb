@@ -38,6 +38,8 @@ namespace Rhino.ServiceBus.Config
                 l.Resolve<IMessageSerializer>(),
                 l.Resolve<IReflection>()));
 
+            b.RegisterSingleton<ITransactionStrategy>(() => new TransactionScopeStrategy());
+
             b.RegisterSingleton<ITransport>(() => (ITransport)new RhinoQueuesTransport(
                 c.Endpoint,
                 l.Resolve<IEndpointRouter>(),

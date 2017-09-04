@@ -44,14 +44,14 @@ namespace Rhino.ServiceBus.Msmq
             var current = Transaction.Current;
             if (current != null)
             {
-                var trans = TransactionInterop.GetDtcTransaction(current);
-                return GCHandle.Alloc(trans);
+                var trans = TransactionInterop.GetDtcTransaction(current);                        
+                return GCHandle.Alloc(trans, GCHandleType.Pinned);
             }
             var curMq = MsmqTransactionStrategy.Current;
             if (curMq != null)
             {
                 var trans = _internalTransaction.GetValue(curMq, null);
-                return GCHandle.Alloc(trans);
+                return GCHandle.Alloc(trans, GCHandleType.Pinned);
             }
 
             return null;
@@ -70,22 +70,36 @@ namespace Rhino.ServiceBus.Msmq
                 throw new TransportException("Failed to open queue: " + fullSubQueueName,
                     new Win32Exception(error));
 
-
-            GCHandle? gch = null;
             try
             {
-                gch = GetTransaction();
+                if (MsmqTransactionStrategy.Current != null)
+                {
+                    var trans = _internalTransaction.GetValue(MsmqTransactionStrategy.Current, null);
+
+                    error = NativeMethods.MQMoveMessage(queue.ReadHandle, queueHandle,
+                        message.LookupId, trans);
+                    if (error != 0)
+                        throw new TransportException("Failed to move message to queue: " + fullSubQueueName,
+                            new Win32Exception(error));
+
+                    return;
+                }
+
+                Transaction current = Transaction.Current;
+                IDtcTransaction transaction = null;
+                if (current != null && queue.Transactional)
+                {
+                    transaction = TransactionInterop.GetDtcTransaction(current);
+                }
 
                 error = NativeMethods.MQMoveMessage(queue.ReadHandle, queueHandle,
-                    message.LookupId, gch?.AddrOfPinnedObject() ?? IntPtr.Zero);
+                    message.LookupId, transaction);
                 if (error != 0)
                     throw new TransportException("Failed to move message to queue: " + fullSubQueueName,
                         new Win32Exception(error));
             }
             finally
             {
-                gch?.Free();
-
                 error = NativeMethods.MQCloseQueue(queueHandle);
                 if (error != 0)
                     throw new TransportException("Failed to close queue: " + fullSubQueueName,

@@ -33,6 +33,8 @@ namespace Rhino.ServiceBus.Config
             var busConfig = c.ConfigurationSection.Bus;
             var queueManagerConfiguration = new QueueManagerConfiguration();
 
+            b.RegisterSingleton<ITransactionStrategy>(() => new TransactionScopeStrategy());
+
             b.RegisterSingleton<IMessageBuilder<MessagePayload>>(() => (IMessageBuilder<MessagePayload>)new RhinoQueuesMessageBuilder(
                 l.Resolve<IMessageSerializer>(),
                 l.Resolve<IServiceLocator>()));
