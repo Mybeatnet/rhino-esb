@@ -18,7 +18,7 @@ namespace Rhino.ServiceBus.Tests
 
         public RequestAndReply()
         {
-            container = new WindsorContainer(new XmlInterpreter());
+            container = new WindsorContainer(new XmlInterpreter());            
             new RhinoServiceBusConfiguration()
                 .UseCastleWindsor(container)
                 .Configure();
@@ -41,27 +41,6 @@ namespace Rhino.ServiceBus.Tests
 
                     Assert.NotNull(message);
                 }
-            }
-
-        }
-
-        [Fact]
-        public void Bus_will_not_hold_reference_to_consumer()
-        {
-            using (var bus = container.Resolve<IStartableServiceBus>())
-            {
-                bus.Start();
-
-                var weakConsumer = new WeakReference(new PingConsumer(bus));
-
-                using (bus.AddInstanceSubscription((IMessageConsumer)weakConsumer.Target))
-                {
-                  
-                }
-                GC.Collect(2);
-                GC.WaitForPendingFinalizers();
-             
-                Assert.False(weakConsumer.IsAlive);
             }
         }
 

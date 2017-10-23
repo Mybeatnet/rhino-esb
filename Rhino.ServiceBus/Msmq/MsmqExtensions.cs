@@ -74,10 +74,10 @@ namespace Rhino.ServiceBus.Msmq
             {
                 if (MsmqTransactionStrategy.Current != null)
                 {
-                    var trans = _internalTransaction.GetValue(MsmqTransactionStrategy.Current, null);
+                    //var trans = _internalTransaction.GetValue(MsmqTransactionStrategy.Current, null);
 
                     error = NativeMethods.MQMoveMessage(queue.ReadHandle, queueHandle,
-                        message.LookupId, trans);
+                        message.LookupId, null);
                     if (error != 0)
                         throw new TransportException("Failed to move message to queue: " + fullSubQueueName,
                             new Win32Exception(error));

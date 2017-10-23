@@ -191,15 +191,11 @@ namespace Rhino.ServiceBus.Msmq
                     if (peek == null) //nothing was found 
                         continue;
 
-                    if ((MessageType)((message.AppSpecific & 0xFFFF0000) >> 16) == MessageType.MoveMessageMarker)
+                    if ((MessageType) ((message.AppSpecific & 0xFFFF0000) >> 16) == MessageType.MoveMessageMarker)
                     {
-                        var subQueue = (SubQueue)(0x0000FFFF & message.AppSpecific);
-                        using (var tx = _transactionStrategy.Begin())
-                        {
-                            string msgId;
-                            queueStrategy.TryMoveMessage(queue, message, subQueue, out msgId);
-                            tx.Complete();
-                        }
+                        var subQueue = (SubQueue) (0x0000FFFF & message.AppSpecific);
+                        string msgId;
+                        queueStrategy.TryMoveMessage(queue, message, subQueue, out msgId);
                         Raise(MessageMoved);
                         continue;
                     }
