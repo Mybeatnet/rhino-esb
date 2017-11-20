@@ -1,7 +1,6 @@
 using System;
 using System.Messaging;
 using System.Threading;
-using System.Transactions;
 using Common.Logging;
 using Rhino.ServiceBus.DataStructures;
 using Rhino.ServiceBus.Exceptions;
@@ -19,7 +18,8 @@ namespace Rhino.ServiceBus.LoadBalancer
         private int continuousDeliveryFailures = 0;
 		private readonly Uri secondaryLoadBalancer;
 		private readonly IQueueStrategy queueStrategy;
-		private readonly ILog logger = LogManager.GetLogger(typeof(MsmqLoadBalancer));
+	    private readonly ITransactionStrategy _transactionStrategy;
+	    private readonly ILog logger = LogManager.GetLogger(typeof(MsmqLoadBalancer));
 		private readonly Queue<Uri> readyForWork = new Queue<Uri>();
 		private readonly Set<Uri> knownWorkers = new Set<Uri>();
 		private readonly Timer heartBeatTimer;
@@ -36,11 +36,13 @@ namespace Rhino.ServiceBus.LoadBalancer
 			Uri endpoint,
 			int threadCount,
 			TransactionalOptions transactional,
-            IMessageBuilder<Message> messageBuilder)
-			: base(queueStrategy, endpoint, threadCount, serializer, endpointRouter, transactional, messageBuilder)
+            IMessageBuilder<Message> messageBuilder,
+            ITransactionStrategy transactionStrategy)
+			: base(queueStrategy, endpoint, threadCount, serializer, endpointRouter, transactional, messageBuilder, transactionStrategy)
 		{
 			heartBeatTimer = new Timer(SendHeartBeatToSecondaryServer);
 			this.queueStrategy = queueStrategy;
+		    _transactionStrategy = transactionStrategy;
 		}
 
 		public MsmqLoadBalancer(
@@ -51,8 +53,9 @@ namespace Rhino.ServiceBus.LoadBalancer
 					int threadCount,
 					Uri secondaryLoadBalancer,
 					TransactionalOptions transactional,
-                    IMessageBuilder<Message> messageBuilder)
-			: this(serializer, queueStrategy, endpointRouter, endpoint, threadCount, transactional, messageBuilder)
+                    IMessageBuilder<Message> messageBuilder,
+                    ITransactionStrategy transactionStrategy)
+			: this(serializer, queueStrategy, endpointRouter, endpoint, threadCount, transactional, messageBuilder, transactionStrategy)
 		{
 			this.secondaryLoadBalancer = secondaryLoadBalancer;
 		}
@@ -131,7 +134,7 @@ namespace Rhino.ServiceBus.LoadBalancer
 
 		private void RemoveAllReadyToWorkMessages()
 		{
-			using (var tx = new TransactionScope())
+			using (var tx =  _transactionStrategy.Begin())
 			using (var readyForWorkQueue = MsmqUtil.GetQueuePath(Endpoint).Open(QueueAccessMode.SendAndReceive))
 			using (var enumerator = readyForWorkQueue.GetMessageEnumerator2())
 			{
@@ -143,7 +146,7 @@ namespace Rhino.ServiceBus.LoadBalancer
 							enumerator.Current != null &&
 							enumerator.Current.Label == typeof(ReadyToWork).FullName)
 						{
-							var current = enumerator.RemoveCurrent(readyForWorkQueue.GetTransactionType());
+							var current = enumerator.TransactionalRemoveCurrent();
 							HandleLoadBalancerMessage(readyForWorkQueue, current);
 						}
 					}
@@ -240,7 +243,7 @@ namespace Rhino.ServiceBus.LoadBalancer
 		{
 			try
 			{
-				using (var tx = new TransactionScope(TransactionScopeOption.Required, TransportUtil.GetTransactionTimeout()))
+				using (var tx = _transactionStrategy.Begin())
 				{
 					message = queue.TryGetMessageFromQueue(message.Id);
 					if (message == null)
@@ -408,14 +411,10 @@ namespace Rhino.ServiceBus.LoadBalancer
 			if (responseQueue == null)
 				return;
 			try
-			{
-				var transactionType = MessageQueueTransactionType.None;
-				if (Endpoint.Transactional.GetValueOrDefault())
-					transactionType = Transaction.Current == null ? MessageQueueTransactionType.Single : MessageQueueTransactionType.Automatic;
-				
+			{				
 				var newEndpoint = ReadyForWorkListener != null ? ReadyForWorkListener.Endpoint.Uri : Endpoint.Uri;
 				var message = new ReadyForWorkQueueUri {Endpoint = newEndpoint};
-				responseQueue.Send(GenerateMsmqMessageFromMessageBatch(message), transactionType);
+				responseQueue.TransactionalSend(GenerateMsmqMessageFromMessageBatch(message));
 			}
 			catch (Exception e)
 			{
@@ -431,10 +430,6 @@ namespace Rhino.ServiceBus.LoadBalancer
 			{
 				var endpoints = KnownEndpoints.GetValues();
 				var workers = KnownWorkers.GetValues();
-
-				var transactionType = MessageQueueTransactionType.None;
-				if (Endpoint.Transactional.GetValueOrDefault())
-					transactionType = Transaction.Current == null ? MessageQueueTransactionType.Single : MessageQueueTransactionType.Automatic;
 				
 				var index = 0;
 				while (index < endpoints.Length)
@@ -445,7 +440,7 @@ namespace Rhino.ServiceBus.LoadBalancer
 						.Select(x => new NewEndpointPersisted { PersistedEndpoint = x })
 						.ToArray();
 					index += endpointsBatch.Length;
-					responseQueue.Send(GenerateMsmqMessageFromMessageBatch(endpointsBatch), transactionType);
+                    responseQueue.TransactionalSend(GenerateMsmqMessageFromMessageBatch(endpointsBatch));
 				}
 
 				index = 0;
@@ -457,7 +452,7 @@ namespace Rhino.ServiceBus.LoadBalancer
 						.Select(x => new NewWorkerPersisted { Endpoint = x })
 						.ToArray();
 					index += workersBatch.Length;
-					responseQueue.Send(GenerateMsmqMessageFromMessageBatch(workersBatch), transactionType);
+					responseQueue.TransactionalSend(GenerateMsmqMessageFromMessageBatch(workersBatch));
 				}
 			}
 			catch (Exception e)

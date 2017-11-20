@@ -33,6 +33,7 @@ namespace Rhino.ServiceBus.Msmq
         private readonly IMsmqTransportAction[] transportActions;
         private readonly IsolationLevel queueIsolationLevel;
         private readonly bool consumeInTransaction;
+	    private readonly ITransactionStrategy _transactionStrategy;
 
         public MsmqTransport(IMessageSerializer serializer, 
             IQueueStrategy queueStrategy, 
@@ -43,12 +44,14 @@ namespace Rhino.ServiceBus.Msmq
             IsolationLevel queueIsolationLevel, 
             TransactionalOptions transactional, 
             bool consumeInTransaction,
-            IMessageBuilder<Message> messageBuilder)
-			: base(queueStrategy, endpoint, threadCount, serializer, endpointRouter, transactional, messageBuilder)
+            IMessageBuilder<Message> messageBuilder, 
+            ITransactionStrategy transactionStrategy)
+			: base(queueStrategy, endpoint, threadCount, serializer, endpointRouter, transactional, messageBuilder, transactionStrategy)
         {
             this.transportActions = transportActions;
             this.queueIsolationLevel = queueIsolationLevel;
             this.consumeInTransaction = consumeInTransaction;
+            _transactionStrategy = transactionStrategy;
         }
 
     	#region ITransport Members
@@ -171,12 +174,7 @@ namespace Rhino.ServiceBus.Msmq
 
         public void ReceiveMessageInTransaction(OpenedQueue queue, string messageId, Func<CurrentMessageInformation, bool> messageArrived, Action<CurrentMessageInformation, Exception> messageProcessingCompleted, Action<CurrentMessageInformation> beforeMessageTransactionCommit, Action<CurrentMessageInformation> beforeMessageTransactionRollback)
 		{
-        	var transactionOptions = new TransactionOptions
-        	{
-				IsolationLevel = queueIsolationLevel,
-				Timeout = TransportUtil.GetTransactionTimeout(),
-        	};
-			using (var tx = new TransactionScope(TransactionScopeOption.Required, transactionOptions))
+            using (var tx = _transactionStrategy.Begin())
 			{
 				var message = queue.TryGetMessageFromQueue(messageId);
                 
@@ -221,7 +219,7 @@ namespace Rhino.ServiceBus.Msmq
         private void ProcessMessage(
 			Message message, 
             OpenedQueue messageQueue, 
-            TransactionScope tx,
+            IRsbTransaction tx,
             Func<CurrentMessageInformation, bool> messageRecieved,
 			Action<CurrentMessageInformation> beforeMessageTransactionCommit,
 			Action<CurrentMessageInformation> beforeMessageTransactionRollback,

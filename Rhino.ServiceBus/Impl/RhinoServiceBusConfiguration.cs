@@ -42,6 +42,9 @@ namespace Rhino.ServiceBus.Impl
             if (busConfig.ConsumeInTransaction.HasValue)
                 consumeInTxn = busConfig.ConsumeInTransaction.Value;
 
+            if (busConfig.UseDtc.HasValue)
+                UseDtc = busConfig.UseDtc.Value;
+
             var uriString = busConfig.Endpoint;
             Uri endpoint;
             if (!Uri.TryCreate(uriString, UriKind.Absolute, out endpoint))

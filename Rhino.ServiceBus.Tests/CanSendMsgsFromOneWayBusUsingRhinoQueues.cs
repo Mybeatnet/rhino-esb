@@ -9,6 +9,7 @@ using Rhino.ServiceBus.Impl;
 using Rhino.ServiceBus.Internal;
 using Rhino.ServiceBus.RhinoQueues;
 using Rhino.ServiceBus.Tests.RhinoQueues;
+using Rhino.ServiceBus.Transport;
 using Xunit;
 
 namespace Rhino.ServiceBus.Tests
@@ -64,7 +65,8 @@ namespace Rhino.ServiceBus.Tests
                         false,
                         new RhinoQueuesMessageBuilder(container.Resolve<IMessageSerializer>(),
                             container.Resolve<IServiceLocator>()),
-                        new QueueManagerConfiguration()))
+                        new QueueManagerConfiguration(),
+                        new TransactionScopeStrategy()))
                 {
                     oneWay.Send("hello there, one way");
 

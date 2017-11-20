@@ -1,3 +1,4 @@
+using System.Transactions;
 using Common.Logging;
 using Rhino.ServiceBus.Transport;
 
@@ -5,7 +6,6 @@ namespace Rhino.ServiceBus.Msmq
 {
 	using System;
 	using System.Messaging;
-	using System.Transactions;
 	using Exceptions;
 
 	public class OpenedQueue : IDisposable
@@ -13,8 +13,8 @@ namespace Rhino.ServiceBus.Msmq
 		private readonly QueueInfo info;
 		private readonly OpenedQueue parent;
 		private readonly MessageQueue queue;
-	    private readonly string queueUrl;
-		private readonly bool transactional;
+	    private readonly string queueUrl;	   
+	    private readonly bool transactional;
 		private readonly ILog logger = LogManager.GetLogger(typeof (OpenedQueue));
 
 		public OpenedQueue(QueueInfo info, MessageQueue queue, string url, bool? transactional)
@@ -24,14 +24,13 @@ namespace Rhino.ServiceBus.Msmq
 			this.info = info;
 			this.queue = queue;
 		    queueUrl = url;
-			this.transactional = transactional ?? (info.IsLocal == false || queue.Transactional);
+		    this.transactional = transactional ?? (info.IsLocal == false || queue.Transactional);
 			queue.MessageReadPropertyFilter.SetAll();
 			
 		}
 
 		public OpenedQueue(OpenedQueue parent, MessageQueue queue, string url)
-			: this(parent.info, queue, url, 
-				parent.transactional)
+			: this(parent.info, queue, url, parent.transactional)
 		{
 			this.parent = parent;
 		}
@@ -67,38 +66,23 @@ namespace Rhino.ServiceBus.Msmq
 
 		#endregion
 
-		public void Send(Message msg)
-		{
-			var responsePath = "no response queue";
-			if (msg.ResponseQueue != null)
-				responsePath = msg.ResponseQueue.Path;
-			logger.DebugFormat("Sending message {0} to {1}, reply: {2}",
-					msg.Label,
-					queue.Path,
-					responsePath);
-			queue.Send(msg, GetTransactionType());
-		}
+	    public void Send(Message msg)
+	    {
+	        var responsePath = "no response queue";
+	        if (msg.ResponseQueue != null)
+	            responsePath = msg.ResponseQueue.Path;
+	        logger.DebugFormat("Sending message {0} to {1}, reply: {2}",
+	            msg.Label,
+	            queue.Path,
+	            responsePath);
 
-		public MessageQueueTransactionType GetTransactionType()
-		{
-			try
-			{
-				if(transactional)
-				{
-					return Transaction.Current == null ? 
-					                                   	MessageQueueTransactionType.Single : 
-					                                   	                                   	MessageQueueTransactionType.Automatic;
-				}
-				return MessageQueueTransactionType.None;
-			}
-			catch(Exception e)
-			{
-				logger.Error("Could not access the ambient transaction", e);
-				throw;
-			}
-		}
+	        if (transactional)
+	            queue.TransactionalSend(msg);	            
+            else
+                queue.Send(msg, MessageQueueTransactionType.None);
+	    }
 
-		public MessageQueueTransactionType GetSingleTransactionType()
+	    public MessageQueueTransactionType GetSingleTransactionType()
 		{
 			if (parent != null)
 				return parent.GetSingleTransactionType();
@@ -114,9 +98,9 @@ namespace Rhino.ServiceBus.Msmq
 		{
 			try
 			{
-				return queue.ReceiveById(
-					messageId,
-					GetTransactionType());
+                if (IsTransactional)
+			        return queue.TransactionalReceiveById(messageId);
+			    return queue.ReceiveById(messageId);
 			}
 			catch (InvalidOperationException)// message was read before we could read it
 			{
@@ -132,12 +116,14 @@ namespace Rhino.ServiceBus.Msmq
 			return new OpenedQueue(this, messageQueue, queueUrl+";"+subQueue);
 		}
 
-		public Message ReceiveById(string id)
-		{
-			return queue.ReceiveById(id, GetTransactionType());
-		}
+	    public Message ReceiveById(string id)
+	    {
+	        if (IsTransactional)
+	            return queue.TransactionalReceiveById(id);
+	        return queue.ReceiveById(id);
+	    }
 
-		public MessageEnumerator GetMessageEnumerator2()
+	    public MessageEnumerator GetMessageEnumerator2()
 		{
 			return queue.GetMessageEnumerator2();
 		}
@@ -149,7 +135,9 @@ namespace Rhino.ServiceBus.Msmq
 
 		public OpenedQueue OpenSiblngQueue(SubQueue subQueue, QueueAccessMode accessMode)
 		{
-		    return new OpenedQueue(info, new MessageQueue(info.QueuePath + "#" + subQueue), queueUrl + "#" + subQueue, transactional);
+		    return new OpenedQueue(info, new MessageQueue(info.QueuePath + "#" + subQueue),
+		        queueUrl + "#" + subQueue,
+		        transactional);
 		}
 
 		public Message[] GetAllMessagesWithStringFormatter()
@@ -187,7 +175,18 @@ namespace Rhino.ServiceBus.Msmq
 
 		public Message Receive()
 		{
-			return queue.Receive(GetTransactionType());
+		    return queue.TransactionalReceive();
 		}
+
+	    public MessageQueueTransactionType GetTransactionType()
+	    {
+	        if (!IsTransactional)
+	            return MessageQueueTransactionType.None;
+	        if (Transaction.Current != null)
+	            return MessageQueueTransactionType.Automatic;
+	        if (MsmqTransactionStrategy.Current != null)
+	            return MessageQueueTransactionType.Single;
+	        return MessageQueueTransactionType.None;
+	    }
 	}
 }

@@ -18,6 +18,7 @@ using IStartable = Rhino.ServiceBus.Internal.IStartable;
 using LoadBalancerConfiguration = Rhino.ServiceBus.LoadBalancer.LoadBalancerConfiguration;
 using System.Reflection;
 using System.Collections.Generic;
+using Rhino.ServiceBus.Transport;
 
 namespace Rhino.ServiceBus.Unity
 {
@@ -96,7 +97,8 @@ namespace Rhino.ServiceBus.Unity
                     new InjectionParameter<int>(loadBalancerConfig.ThreadCount),
                     new InjectionParameter<Uri>(loadBalancerConfig.SecondaryLoadBalancer),
                     new InjectionParameter<TransactionalOptions>(loadBalancerConfig.Transactional),
-                    new ResolvedParameter<IMessageBuilder<Message>>()),
+                    new ResolvedParameter<IMessageBuilder<Message>>(),
+                    new ResolvedParameter<ITransactionStrategy>()),
                 new InjectionProperty("ReadyForWorkListener"))
                 .RegisterType<IStartable, MsmqLoadBalancer>(new ContainerControlledLifetimeManager());
 
@@ -134,7 +136,8 @@ namespace Rhino.ServiceBus.Unity
                     new ResolvedParameter<IMessageSerializer>(),
                     new ResolvedParameter<IEndpointRouter>(),
                     new InjectionParameter<TransactionalOptions>(loadBalancerConfig.Transactional),
-                    new ResolvedParameter<IMessageBuilder<Message>>()));
+                    new ResolvedParameter<IMessageBuilder<Message>>(),
+                    new ResolvedParameter<ITransactionStrategy>()));
 
             container.RegisterType<IDeploymentAction, CreateReadyForWorkQueuesAction>(Guid.NewGuid().ToString(), new ContainerControlledLifetimeManager());
         }

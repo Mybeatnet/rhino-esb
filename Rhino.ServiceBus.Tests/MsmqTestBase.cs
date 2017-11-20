@@ -10,6 +10,7 @@ using Rhino.ServiceBus.Msmq;
 using Rhino.ServiceBus.Msmq.TransportActions;
 using Rhino.ServiceBus.Serializers;
 using System.Transactions;
+using Rhino.ServiceBus.Transport;
 
 namespace Rhino.ServiceBus.Tests
 {
@@ -132,11 +133,17 @@ namespace Rhino.ServiceBus.Tests
                             new EndpointRouter(),
 							IsolationLevel.Serializable, TransactionalOptions.FigureItOut,
                             true,
-                            new MsmqMessageBuilder(serializer, new CastleServiceLocator(new WindsorContainer())));
+                            new MsmqMessageBuilder(serializer, new CastleServiceLocator(new WindsorContainer())),
+                            GetTransactionStrategy());
                     transport.Start();
                 }
                 return transport;
             }
+        }
+
+        public static ITransactionStrategy GetTransactionStrategy()
+        {
+            return new TransactionScopeStrategy();
         }
 
         public ITransport TransactionalTransport
@@ -156,7 +163,8 @@ namespace Rhino.ServiceBus.Tests
                             new EndpointRouter(),
 							IsolationLevel.Serializable,TransactionalOptions.FigureItOut,
                             true,
-                            new MsmqMessageBuilder(serializer, new CastleServiceLocator(new WindsorContainer())));
+                            new MsmqMessageBuilder(serializer, new CastleServiceLocator(new WindsorContainer())),
+                            GetTransactionStrategy());
                     transactionalTransport.Start();
                 }
                 return transactionalTransport;
@@ -173,7 +181,7 @@ namespace Rhino.ServiceBus.Tests
                     new AdministrativeAction(),
                     new ErrorAction(5, qs),
                     new ShutDownAction(),
-                    new TimeoutAction(qs)
+                    new TimeoutAction(qs, GetTransactionStrategy())
                 };
             }
         }

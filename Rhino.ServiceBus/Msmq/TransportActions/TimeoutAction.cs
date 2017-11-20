@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Messaging;
 using System.Threading;
-using System.Transactions;
 using Common.Logging;
 using Rhino.ServiceBus.DataStructures;
 using Rhino.ServiceBus.Internal;
@@ -21,9 +20,12 @@ namespace Rhino.ServiceBus.Msmq.TransportActions
         private readonly OrderedList<DateTime, string> timeoutMessageIds =
             new OrderedList<DateTime, string>();
 
-        public TimeoutAction(IQueueStrategy queueStrategy)
+        private readonly ITransactionStrategy transactionStrategy;
+
+        public TimeoutAction(IQueueStrategy queueStrategy, ITransactionStrategy transactionStrategy)
         {
             this.queueStrategy = queueStrategy;
+            this.transactionStrategy = transactionStrategy;
         }
 
         public override void Init(IMsmqTransport transport, OpenedQueue queue)
@@ -51,7 +53,7 @@ namespace Rhino.ServiceBus.Msmq.TransportActions
 
         public override bool HandlePeekedMessage(IMsmqTransport transport, OpenedQueue queue, Message message)
         {
-          using(var tx = new TransactionScope())
+          using(var tx = transactionStrategy.Begin())
           {
               var processMessageAt = DateTime.FromBinary(BitConverter.ToInt64(message.Extension, 16));
               if (CurrentTime >= processMessageAt)
@@ -98,7 +100,7 @@ namespace Rhino.ServiceBus.Msmq.TransportActions
                         try
                         {
                             using (var queue = parentTransport.CreateQueue())
-                            using (var tx = new TransactionScope())
+                            using (var tx = transactionStrategy.Begin())
                             {
                                 queueUri = queue.RootUri;
                                 logger.DebugFormat("Moving message {0} to main queue: {1}",

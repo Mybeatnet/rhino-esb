@@ -16,7 +16,7 @@ namespace Rhino.ServiceBus.Impl
         private readonly List<Type> messageModules = new List<Type>();
         private Type serializerImpl = typeof(XmlMessageSerializer);
         protected IsolationLevel queueIsolationLevel = IsolationLevel.Serializable;
-        public bool consumeInTxn = true;
+        public bool consumeInTxn = true;        
         private BusConfigurationSection configurationSection;
         private Action readConfiguration;
         private IBusContainerBuilder busContainerBuilder;
@@ -32,6 +32,7 @@ namespace Rhino.ServiceBus.Impl
             ThreadCount = 1;
             NumberOfRetries = 5;
             Transactional = TransactionalOptions.FigureItOut;
+            UseDtc = true;
         }
 
         public IEnumerable<Assembly> Assemblies
@@ -70,6 +71,8 @@ namespace Rhino.ServiceBus.Impl
         {
             get { return consumeInTxn; }
         }
+
+        public bool UseDtc { get; set; }
 
         public Type SerializerType
         {

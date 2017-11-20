@@ -15,6 +15,7 @@ using Rhino.Queues;
 using Rhino.Queues.Model;
 using Rhino.ServiceBus.Impl;
 using Rhino.ServiceBus.Internal;
+using Rhino.ServiceBus.Msmq;
 using Rhino.ServiceBus.Transport;
 using Rhino.ServiceBus.Util;
 using Transaction = System.Transactions.Transaction;
@@ -42,6 +43,7 @@ namespace Rhino.ServiceBus.RhinoQueues
         private readonly bool enablePerformanceCounters;
         private readonly IMessageBuilder<MessagePayload> messageBuilder;
         private readonly QueueManagerConfiguration queueManagerConfiguration;
+        private readonly ITransactionStrategy transactionStrategy;
 
         [ThreadStatic]
         private static RhinoQueueCurrentMessageInformation currentMessageInformation;
@@ -60,7 +62,8 @@ namespace Rhino.ServiceBus.RhinoQueues
             int numberOfRetries,
             bool enablePerformanceCounters,
             IMessageBuilder<MessagePayload> messageBuilder,
-            QueueManagerConfiguration queueManagerConfiguration)
+            QueueManagerConfiguration queueManagerConfiguration,
+            ITransactionStrategy transactionStrategy)
         {
             this.endpoint = endpoint;
             this.queueIsolationLevel = queueIsolationLevel;
@@ -68,6 +71,7 @@ namespace Rhino.ServiceBus.RhinoQueues
             this.enablePerformanceCounters = enablePerformanceCounters;
             this.messageBuilder = messageBuilder;
             this.queueManagerConfiguration = queueManagerConfiguration;
+            this.transactionStrategy = transactionStrategy;
             this.endpointRouter = endpointRouter;
             this.messageSerializer = messageSerializer;
             this.threadCount = threadCount;
@@ -280,9 +284,8 @@ namespace Rhino.ServiceBus.RhinoQueues
 
                 if (shouldContinue == false)
                     return;
-
-                var transactionOptions = GetTransactionOptions();
-                using (var tx = new TransactionScope(TransactionScopeOption.Required, transactionOptions))
+                
+                using (var tx = transactionStrategy.Begin())
                 {
                     Message message;
                     try
@@ -364,7 +367,7 @@ namespace Rhino.ServiceBus.RhinoQueues
             }
         }
 
-        private void ProcessMessage(Message message, TransactionScope tx, Func<CurrentMessageInformation, bool> messageRecieved, Action<CurrentMessageInformation, Exception> messageCompleted, Action<CurrentMessageInformation> beforeTransactionCommit, Action<CurrentMessageInformation> beforeTransactionRollback)
+        private void ProcessMessage(Message message, IRsbTransaction tx, Func<CurrentMessageInformation, bool> messageRecieved, Action<CurrentMessageInformation, Exception> messageCompleted, Action<CurrentMessageInformation> beforeTransactionCommit, Action<CurrentMessageInformation> beforeTransactionRollback)
         {
             Exception ex = null;
             try
