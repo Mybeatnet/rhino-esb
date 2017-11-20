@@ -10,7 +10,10 @@ namespace Rhino.ServiceBus.Transport
 
         [ThreadStatic] private static RsbTransaction _currentTx;
 
-        public static MessageQueueTransaction Current => GetTx();
+        public static MessageQueueTransaction Current
+        {
+            get { return GetTx(); }
+        }
 
         public IRsbTransaction Begin()
         {
@@ -30,8 +33,11 @@ namespace Rhino.ServiceBus.Transport
 
         private static MessageQueueTransaction GetTx()
         {
-            var tx = (RsbTransaction)HttpContext.Current?.Items[Key] ?? _currentTx;
-            return tx?.Transaction;
+            if (HttpContext.Current == null)
+                return _currentTx == null ? null : _currentTx.Transaction;
+
+            var tx = (RsbTransaction) HttpContext.Current.Items[Key];
+            return tx == null ? null : tx.Transaction;
         }
 
         public Message ReceiveById(MessageQueue queue, string messageId)

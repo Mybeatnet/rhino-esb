@@ -56,9 +56,6 @@ namespace Rhino.ServiceBus.Tests.LocalMsmqTransactions
 
                 using (bus.AddInstanceSubscription((IMessageConsumer)weakConsumer.Target))
                 {
-                    Console.Write("Busy:");
-                    Console.ReadLine();
-
                 }
                 GC.Collect(2);
                 GC.WaitForPendingFinalizers();

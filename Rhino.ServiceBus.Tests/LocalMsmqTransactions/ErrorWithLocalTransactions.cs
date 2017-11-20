@@ -38,7 +38,7 @@ namespace Rhino.ServiceBus.Tests.LocalMsmqTransactions
                 {
                     var originalMessage = errorSubQueue.Receive();
                     var errorDescripotion = errorSubQueue.Receive();
-                    Assert.Equal($"Error description for: {originalMessage.Label}", errorDescripotion.Label);
+                    Assert.Equal(string.Format("Error description for: {0}", originalMessage.Label), errorDescripotion.Label);
                 }
             }
         }
