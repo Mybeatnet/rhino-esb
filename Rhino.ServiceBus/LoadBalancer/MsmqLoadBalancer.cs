@@ -411,10 +411,10 @@ namespace Rhino.ServiceBus.LoadBalancer
 			if (responseQueue == null)
 				return;
 			try
-			{				
-				var newEndpoint = ReadyForWorkListener != null ? ReadyForWorkListener.Endpoint.Uri : Endpoint.Uri;
+			{
+                var newEndpoint = ReadyForWorkListener != null ? ReadyForWorkListener.Endpoint.Uri : Endpoint.Uri;
 				var message = new ReadyForWorkQueueUri {Endpoint = newEndpoint};
-				responseQueue.TransactionalSend(GenerateMsmqMessageFromMessageBatch(message));
+				responseQueue.TransactionalSend(GenerateMsmqMessageFromMessageBatch(message), Endpoint.Transactional.GetValueOrDefault());
 			}
 			catch (Exception e)
 			{
@@ -440,7 +440,7 @@ namespace Rhino.ServiceBus.LoadBalancer
 						.Select(x => new NewEndpointPersisted { PersistedEndpoint = x })
 						.ToArray();
 					index += endpointsBatch.Length;
-                    responseQueue.TransactionalSend(GenerateMsmqMessageFromMessageBatch(endpointsBatch));
+                    responseQueue.TransactionalSend(GenerateMsmqMessageFromMessageBatch(endpointsBatch), Endpoint.Transactional.GetValueOrDefault());
 				}
 
 				index = 0;
@@ -452,7 +452,7 @@ namespace Rhino.ServiceBus.LoadBalancer
 						.Select(x => new NewWorkerPersisted { Endpoint = x })
 						.ToArray();
 					index += workersBatch.Length;
-					responseQueue.TransactionalSend(GenerateMsmqMessageFromMessageBatch(workersBatch));
+					responseQueue.TransactionalSend(GenerateMsmqMessageFromMessageBatch(workersBatch), Endpoint.Transactional.GetValueOrDefault());
 				}
 			}
 			catch (Exception e)

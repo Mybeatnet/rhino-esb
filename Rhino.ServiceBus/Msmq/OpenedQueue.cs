@@ -77,7 +77,7 @@ namespace Rhino.ServiceBus.Msmq
 	            responsePath);
 
 	        if (transactional)
-	            queue.TransactionalSend(msg);	            
+	            queue.TransactionalSend(msg, true);	            
             else
                 queue.Send(msg, MessageQueueTransactionType.None);
 	    }

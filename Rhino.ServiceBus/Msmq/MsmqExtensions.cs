@@ -164,9 +164,9 @@ namespace Rhino.ServiceBus.Msmq
         }
 
 
-        public static void TransactionalSend(this MessageQueue self, Message message)
+        public static void TransactionalSend(this MessageQueue self, Message message, bool transactional)
         {
-            if (self.Transactional == false)
+            if (transactional == false)
             {
                 self.Send(message, MessageQueueTransactionType.None);
                 return;
