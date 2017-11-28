@@ -10,17 +10,4 @@ namespace Rhino.ServiceBus.RabbitMQ
         public IModel Model { get; set; }
         public RabbitMQMessage TransportMessage { get; set; }
     }
-
-    public class RabbitMQMessage
-    {
-        public IBasicProperties Properties { get; set; }
-        public byte[] Data { get; set; }
-    }
-    public interface IMsmqTransportAction
-    {
-        void Init(IMsmqTransport transport, OpenedQueue queue);
-
-        bool CanHandlePeekedMessage(Message message);
-        bool HandlePeekedMessage(IMsmqTransport transport, OpenedQueue queue, Message message);
-    }
 }

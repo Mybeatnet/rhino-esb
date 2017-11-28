@@ -1,135 +1,153 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Threading;
 using Common.Logging;
+using RabbitMQ.Client;
+using RabbitMQ.Client.Events;
+using RabbitMQ.Client.MessagePatterns;
 using Rhino.ServiceBus.Impl;
 using Rhino.ServiceBus.Internal;
+using Rhino.ServiceBus.Messages;
+using Rhino.ServiceBus.Transport;
 
 namespace Rhino.ServiceBus.RabbitMQ
 {
     public class RabbitMQTransport : ITransport
     {
-        [ThreadStatic] private static RabbitMQCurrentMessageInformation _currentMessageInformation;
-        private readonly IEndpointRouter _endpointRouter;
+        private static readonly ILog _logger = LogManager.GetLogger<RabbitMQTransport>();
+
+        [ThreadStatic] private static RabbitMQCurrentMessageInformation _currentMessageInformation;        
 
         private readonly RabbitMQAddress _inputAddress;
-        private readonly ILog _logger = LogManager.GetLogger<RabbitMQTransport>();
         private readonly IMessageBuilder<RabbitMQMessage> _messageBuilder;
         private readonly IMessageSerializer _serializer;
-        private readonly ConnectionProvider connectionProvider;
+        private readonly ConnectionProvider _connectionProvider;
 
         public RabbitMQTransport(IMessageSerializer serializer,
             Uri endpoint,
             int threadCount,
-            IEndpointRouter endpointRouter,
             bool consumeInTransaction,
             IMessageBuilder<RabbitMQMessage> messageBuilder)
         {
             _serializer = serializer;
-            _endpointRouter = endpointRouter;
             _messageBuilder = messageBuilder;
             _inputAddress = RabbitMQAddress.From(endpoint);
             Endpoint = new Endpoint {Uri = endpoint, Transactional = consumeInTransaction};
             ThreadCount = threadCount;
-            connectionProvider = new ConnectionProvider();
+            _connectionProvider = new ConnectionProvider();
         }
 
         public void Start()
         {
-            throw new NotImplementedException();
+            var addr = RabbitMQAddress.From(Endpoint.Uri);
+
+            _consumers = Enumerable.Range(0, ThreadCount)
+                .Select(i => new RabbitMQConsumer(i, addr))
+                .ToArray();
+
+            foreach (var cons in _consumers)
+                cons.Start();
+            for (var i = 0; i < ThreadCount; i++)
+            {
+                _consumers = new RabbitMQConsumer("Rhino Service Bus Worker Thread #" + i, addr)
+                threads[i] = new Thread(ReceiveMessage)
+                {
+                    Name = "Rhino Service Bus Worker Thread #" + i,
+                    IsBackground = true
+                };
+                threads[i].Start(i);
+            }
+
+
+            using (var connection = _connectionProvider.Open(addr, Endpoint.Transactional ?? true))
+            {
+                connection.BasicQos(0, 100, false);
+                var consumer = new EventingBasicConsumer(connection);
+                consumer.Received += (o, e) =>
+                {                    
+                    ProcessMessage(e);
+                    connection.BasicAck(e.DeliveryTag,false);                    
+                };
+                connection.BasicConsume(consumer, addr.QueueName);
+            }
         }
 
+        public bool HaveStarted { get; private set; }
         public Endpoint Endpoint { get; }
         public int ThreadCount { get; }
         public CurrentMessageInformation CurrentMessageInformation => _currentMessageInformation;
 
         public void Send(Endpoint destination, object[] msgs)
         {
-            var address = RabbitMQAddress.From(destination.Uri);
+            if (HaveStarted == false)
+                throw new InvalidOperationException("Cannot send a message before transport is started");
 
-            //if sending locally we need to munge some stuff (remove routing keys)
-            if (address == _inputAddress)
-                address =
-                    new RabbitMQAddress(
-                        _inputAddress.Broker,
-                        _inputAddress.VirtualHost,
-                        _inputAddress.Username,
-                        _inputAddress.Password,
-                        _inputAddress.Exchange,
-                        _inputAddress.QueueName,
-                        string.Empty,
-                        false);
-
-            var outgoingMessage = new OutgoingMessageInformation
+            var messageInformation = new OutgoingMessageInformation
             {
                 Destination = destination,
                 Messages = msgs,
                 Source = Endpoint
             };
 
-            var transportMessage = _messageBuilder.BuildFromMessageBatch(outgoingMessage);
+            var message = _messageBuilder.BuildFromMessageBatch(messageInformation);
 
-            using (var channel = connectionProvider.Open(address, true))
+            SendMessageToQueue(message, destination);
+
+            var copy = MessageSent;
+            if (copy == null)
+                return;
+
+            copy(new CurrentMessageInformation
             {
-                var messageId = Guid.NewGuid().ToString();
+                AllMessages = msgs,
+                Source = Endpoint.Uri,
+                Destination = destination.Uri,
+                MessageId = message.MessageId
+            });
+        }
+
+        private void SendMessageToQueue(RabbitMQMessage message, Endpoint destination)
+        {
+            var addr = RabbitMQAddress.FromString(destination.Uri.ToString());
+            using (var channel = _connectionProvider.Open(addr, true))
+            {
+                channel.TxSelect();
+
                 var properties = channel.CreateBasicProperties();
-                properties.MessageId = messageId;
-                if (!string.IsNullOrEmpty(transportMessage.Properties.CorrelationId))
-                    properties.CorrelationId = transportMessage.CorrelationId;
+                properties.MessageId = message.MessageId.ToString();
+                properties.Priority = (byte) message.Priority;
+                properties.ReplyTo = message.ReplyTo;
+                properties.Expiration = message.Expiration.ToString();
+                properties.Headers = message.Headers;
+                properties.DeliveryMode = 2; // persistent
+                channel.BasicPublish(addr.Exchange, addr.QueueName, true, properties, message.Data);
 
-                properties.Timestamp = DateTime.UtcNow.ToAmqpTimestamp();
-                properties.ReplyTo = this.InputAddress;
-                properties.SetPersistent(transportMessage.Recoverable);
-                var headers = transportMessage.Headers;
-                if ((headers != null) && (headers.Count > 0))
-                {
-                    var dictionary = headers
-                        .ToDictionary<HeaderInfo, string, object>
-                        (entry => entry.Key, entry => entry.Value);
-
-                    properties.Headers = dictionary;
-                }
-
-                if (address.RouteByType)
-                {
-                    var type = msgs[0].GetType();
-                    string typeName = type.FullName;
-                    _logger.InfoFormat("Sending message (routed) " + address.ToString(typeName) + " of " + type.Name);
-                    channel.BasicPublish(address.Exchange, typeName, true, properties, transportMessage.Data);
-                    return;
-                }
-
-                var routingKeys = address.GetRoutingKeysAsArray();
-
-                if (routingKeys.Length > 1)
-                {
-                    var message = "Too many Routing Keys specified for endpoint: " + address;
-                    message += Environment.NewLine + "Keys: " + address.RoutingKeys;
-                    _logger.Error(message);
-                    throw new InvalidOperationException(message);
-                }
-
-                if (routingKeys.Length > 0)
-                {
-                    var type = msgs[0].GetType();
-                    _logger.InfoFormat("Sending message (routed) " + address + " of " + type.Name);
-                    channel.BasicPublish(address.Exchange, routingKeys[0], true, properties, transportMessage.Data);
-                    return;
-                }
-
-                _logger.Info("Sending message " + address + " of " + transportMessage.Body[0].GetType().Name);
-                channel.BasicPublish(address.Exchange, address.QueueName, properties, stream.ToArray());
-                transportMessage.Id = properties.MessageId;
+                channel.TxCommit();
             }
         }
 
         public void Send(Endpoint endpoint, DateTime processAgainAt, object[] msgs)
         {
-            throw new NotImplementedException();
+            if (HaveStarted == false)
+                throw new InvalidOperationException("Cannot send a message before transport is started");
+
+            var messageInformation = new OutgoingMessageInformation
+            {
+                Destination = endpoint,
+                Messages = msgs,
+                Source = Endpoint
+            };
+            var message = _messageBuilder.BuildFromMessageBatch(messageInformation);
+            message.Headers["x-delay"] = (int) Math.Max(processAgainAt.Subtract(DateTime.Now).TotalMilliseconds, 0);
+
+            SendMessageToQueue(message, endpoint);
         }
 
         public void Reply(params object[] messages)
         {
-            throw new NotImplementedException();
+            Send(new Endpoint {Uri = _currentMessageInformation.Source}, messages);
         }
 
         public event Action<CurrentMessageInformation> MessageSent;
