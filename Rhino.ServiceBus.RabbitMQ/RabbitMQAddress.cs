@@ -2,6 +2,7 @@
 using System.Collections.Specialized;
 using System.Linq;
 using Common.Logging;
+using Rhino.ServiceBus.Transport;
 
 namespace Rhino.ServiceBus.RabbitMQ
 {
@@ -53,9 +54,9 @@ namespace Rhino.ServiceBus.RabbitMQ
 
         public string VirtualHost { get; }
 
-        public string Exchange { get; }
+        public string Exchange { get; set; }
 
-        public string QueueName { get; }
+        public string QueueName { get; set; }
 
         public string RoutingKeys { get; }
 
@@ -74,6 +75,7 @@ namespace Rhino.ServiceBus.RabbitMQ
             if (uri.Port != -1)
                 broker += ":" + uri.Port;
 
+            
             var query = new NameValueCollection();
 
             var queryString = uri.Query;
@@ -96,11 +98,13 @@ namespace Rhino.ServiceBus.RabbitMQ
                         query.Add(key, val);
                     });
 
-            var exchange = query[ExchangeKey] ?? string.Empty;
-            var queue = query[QueueKey] ?? string.Empty;
+            var queue = uri.LocalPath.Substring(1);
+            var exchange = uri.Fragment.StartsWith("#") ? uri.Fragment.Substring(1) : string.Empty;
             var vhost = query[VirtualHostKey] ?? string.Empty;
-            var username = query[UsernameKey] ?? string.Empty;
-            var password = query[PasswordKey] ?? string.Empty;
+            
+            var userInfo = uri.UserInfo.Split(new[] { ':'}, 2);
+            var username = userInfo.Length > 0 ? userInfo[0] : string.Empty;
+            var password = userInfo.Length > 1 ? userInfo[1] : string.Empty;
             var routingKeys = query[RoutingKeysKey] ?? string.Empty;
             var routeByTypeValue = query[RouteByTypeKey];
 
@@ -110,7 +114,7 @@ namespace Rhino.ServiceBus.RabbitMQ
                 && string.IsNullOrEmpty(queue)
                 && string.IsNullOrEmpty(routingKeys))
             {
-                var message = "No Exchange, Queue, or RoutingKeys defined for endpoint: " + value;
+                var message = "No Exchange, Queue, or RoutingKeys defined for endpoint: " + uri;
                 _log.Error(message);
                 throw new InvalidOperationException(message);
             }
@@ -153,7 +157,7 @@ namespace Rhino.ServiceBus.RabbitMQ
                            + Uri.EscapeDataString(value);
                 };
 
-            var uri = "rmq://" + Broker + "/?";
+            var uri = $"rmq://{Broker}/{QueueName}?";
 
             if (!string.IsNullOrEmpty(VirtualHost))
                 uri = addParam(uri, VirtualHostKey, VirtualHost);
@@ -164,14 +168,12 @@ namespace Rhino.ServiceBus.RabbitMQ
             if (!string.IsNullOrEmpty(Password))
                 uri = addParam(uri, PasswordKey, Password);
 
-            if (!string.IsNullOrEmpty(Exchange))
-                uri = addParam(uri, ExchangeKey, Exchange);
-
-            if (!string.IsNullOrEmpty(QueueName))
-                uri = addParam(uri, QueueKey, QueueName);
-
             if (!string.IsNullOrEmpty(RoutingKeys))
                 uri = addParam(uri, RoutingKeysKey, RoutingKeys);
+
+            if (!string.IsNullOrEmpty(Exchange))
+                uri += "#" + Uri.EscapeDataString(Exchange);
+
 
             return uri;
         }
@@ -217,6 +219,18 @@ namespace Rhino.ServiceBus.RabbitMQ
         public static bool operator !=(RabbitMQAddress left, RabbitMQAddress right)
         {
             return !Equals(left, right);
+        }
+
+        public Uri ToUri()
+        {
+            return new Uri(ToString());
+        }
+
+        public RabbitMQAddress ForSubQueue(SubQueue subQueue)
+        {
+            return new RabbitMQAddress(Broker, VirtualHost, Username, Password, Exchange,
+                QueueName + "." + subQueue.ToString().ToLower(),
+                RoutingKeys, RouteByType);
         }
     }
 }

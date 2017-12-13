@@ -1,5 +1,6 @@
 using System.Collections.Specialized;
 using System.IO;
+using Rhino.ServiceBus.Internal;
 
 namespace Rhino.ServiceBus.Util
 {
@@ -36,6 +37,12 @@ namespace Rhino.ServiceBus.Util
                 }
             }
             return headers;
+        }
+
+        public static object[] Deserialize(this IMessageSerializer serializer, byte[] body)
+        {
+            using (var ms = new MemoryStream(body))
+                return serializer.Deserialize(ms);
         }
     }
 }

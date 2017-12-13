@@ -11,9 +11,9 @@ namespace Rhino.ServiceBus.Util
         {
             Uri subQueueUrl;
             if (self.AbsolutePath.EndsWith("/"))
-                subQueueUrl = new Uri(self + SubQueue.Discarded.ToString());
+                subQueueUrl = new Uri(self + subQueue.ToString().ToLower());
             else
-                subQueueUrl = new Uri(self + "/" + SubQueue.Discarded);
+                subQueueUrl = new Uri(self + "/" + subQueue.ToString().ToLower());
             return subQueueUrl;
         }
 

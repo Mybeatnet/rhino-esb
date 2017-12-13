@@ -35,7 +35,7 @@ namespace Rhino.ServiceBus.RabbitMQ
             message.Priority = (isAdmin ? 5 : 0);
             message.ReplyTo = _endpoint.Uri.ToString();
             message.Headers = GetHeaders(messageInformation);
-            message.Headers["AppSpecific"] = GetAppSpecificMarker(messageInformation.Messages);
+            message.Headers["MessageType"] = (int)GetMessageType(messageInformation.Messages);
             if (messageInformation.DeliverBy.HasValue)
             {
                 var timeToDelivery = DateTime.Now - messageInformation.DeliverBy.Value;
@@ -65,7 +65,7 @@ namespace Rhino.ServiceBus.RabbitMQ
             }
         }
 
-        private static MessageType GetAppSpecificMarker(object[] msgs)
+        private static MessageType GetMessageType(object[] msgs)
         {
             var msg = msgs[0];
             if (msg is AdministrativeMessage)
