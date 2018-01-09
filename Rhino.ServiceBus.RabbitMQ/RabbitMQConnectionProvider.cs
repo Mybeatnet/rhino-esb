@@ -6,15 +6,14 @@ using RabbitMQ.Client;
 
 namespace Rhino.ServiceBus.RabbitMQ
 {
+    [CLSCompliant(false)]
     public class RabbitMQConnectionProvider
     {
         private static readonly ConcurrentDictionary<string, ConnectionFactory> _connectionFactories
             = new ConcurrentDictionary<string, ConnectionFactory>();
 
         private static readonly ConcurrentDictionary<string, IConnection> _connections
-            = new ConcurrentDictionary<string, IConnection>();
-
-        [ThreadStatic] private static Dictionary<string, OpenedSession> _state;
+            = new ConcurrentDictionary<string, IConnection>();        
 
         private readonly ILog _log = LogManager.GetLogger<RabbitMQConnectionProvider>();
 

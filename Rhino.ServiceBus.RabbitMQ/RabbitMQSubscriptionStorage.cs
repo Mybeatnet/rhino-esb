@@ -13,6 +13,7 @@ using Rhino.ServiceBus.Util;
 
 namespace Rhino.ServiceBus.RabbitMQ
 {
+    [CLSCompliant(false)]
     public class RabbitMQSubscriptionStorage : ISubscriptionStorage, IMessageModule
     {
         private readonly RabbitMQConnectionProvider _connectionProvider;

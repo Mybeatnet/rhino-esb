@@ -6,16 +6,13 @@ using Castle.MicroKernel.Registration;
 using Castle.Windsor;
 using Rhino.ServiceBus.Impl;
 using Rhino.ServiceBus.Internal;
-using Rhino.ServiceBus.RabbitMQ;
-using Rhino.ServiceBus.Tests.Bugs;
-using Rhino.ServiceBus.Tests.RhinoQueues;
 using Rhino.ServiceBus.Transport;
 using Rhino.ServiceBus.Util;
 using Xunit;
 
-namespace Rhino.ServiceBus.Tests.RabbitMQ
+namespace Rhino.ServiceBus.RabbitMQ.Tests
 {
-    public class UsingRabbitMQBus : WithDebugging, IDisposable
+    public class UsingRabbitMQBus : IDisposable
     {
         public UsingRabbitMQBus()
         {
@@ -25,10 +22,8 @@ namespace Rhino.ServiceBus.Tests.RabbitMQ
             container = new WindsorContainer();
             new RhinoServiceBusConfiguration()
                 .UseCastleWindsor(container)
-                .UseStandaloneConfigurationFile("RabbitMQ/RabbitMQ.config")
+                .UseStandaloneConfigurationFile("RabbitMQ.config")
                 .Configure();
-            container.Register(
-                Component.For<WhenTransactionCommitErrors_ShouldNotCrash_Msmq.ConsumerEnlistingInBadTransaction>());
             container.Register(Component.For<StringConsumer>());
             container.Register(Component.For<ThrowingIntConsumer>());
             bus = container.Resolve<IStartableServiceBus>();

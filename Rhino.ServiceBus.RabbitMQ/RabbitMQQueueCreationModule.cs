@@ -4,6 +4,7 @@ using Rhino.ServiceBus.Msmq;
 
 namespace Rhino.ServiceBus.RabbitMQ
 {
+    [CLSCompliant(false)]
     public class RabbitMQQueueCreationModule : IServiceBusAware
     {
         private readonly RabbitMQQueueStrategy _queueStrategy;

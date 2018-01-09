@@ -6,6 +6,7 @@ using RabbitMQ.Client.Events;
 
 namespace Rhino.ServiceBus.RabbitMQ
 {
+    [CLSCompliant(false)]
     public class RabbitMQConsumer
     {
         private static readonly ILog _log = LogManager.GetLogger<RabbitMQConsumer>();

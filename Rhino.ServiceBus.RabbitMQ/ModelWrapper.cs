@@ -5,6 +5,7 @@ using RabbitMQ.Client.Events;
 
 namespace Rhino.ServiceBus.RabbitMQ
 {
+    [CLSCompliant(false)]
     public class ModelWrapper : IModel
     {
         private readonly IModel _impl;
@@ -240,15 +241,9 @@ namespace Rhino.ServiceBus.RabbitMQ
             _impl.WaitForConfirmsOrDie(timeout);
         }
 
-        public int ChannelNumber
-        {
-            get { return _impl.ChannelNumber; }
-        }
+        public int ChannelNumber => _impl.ChannelNumber;
 
-        public ShutdownEventArgs CloseReason
-        {
-            get { return _impl.CloseReason; }
-        }
+        public ShutdownEventArgs CloseReason => _impl.CloseReason;
 
         public IBasicConsumer DefaultConsumer
         {
@@ -256,20 +251,11 @@ namespace Rhino.ServiceBus.RabbitMQ
             set { _impl.DefaultConsumer = value; }
         }
 
-        public bool IsClosed
-        {
-            get { return _impl.IsClosed; }
-        }
+        public bool IsClosed => _impl.IsClosed;
 
-        public bool IsOpen
-        {
-            get { return _impl.IsOpen; }
-        }
+        public bool IsOpen => _impl.IsOpen;
 
-        public ulong NextPublishSeqNo
-        {
-            get { return _impl.NextPublishSeqNo; }
-        }
+        public ulong NextPublishSeqNo => _impl.NextPublishSeqNo;
 
         public TimeSpan ContinuationTimeout
         {

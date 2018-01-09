@@ -4,6 +4,7 @@ using Rhino.ServiceBus.Impl;
 
 namespace Rhino.ServiceBus.RabbitMQ
 {
+    [CLSCompliant(false)]
     public class RabbitMQErrorAction
     {
         private readonly RabbitMQTransport _transport;

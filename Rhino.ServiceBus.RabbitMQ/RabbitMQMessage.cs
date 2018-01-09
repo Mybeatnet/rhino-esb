@@ -5,6 +5,7 @@ using RabbitMQ.Client.Events;
 
 namespace Rhino.ServiceBus.RabbitMQ
 {
+    [CLSCompliant(false)]
     public class RabbitMQMessage
     {
         public RabbitMQMessage(byte[] data, IBasicProperties properties)

@@ -5,6 +5,7 @@ using Rhino.ServiceBus.Transport;
 
 namespace Rhino.ServiceBus.RabbitMQ
 {
+    [CLSCompliant(false)]
     public class RabbitMQTransaction : IRsbTransaction
     {
         [ThreadStatic] private static RabbitMQTransaction _current;

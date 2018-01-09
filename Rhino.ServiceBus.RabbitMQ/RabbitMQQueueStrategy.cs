@@ -1,10 +1,10 @@
 ﻿using System;
 using Common.Logging;
-using Rhino.ServiceBus.Msmq;
 using Rhino.ServiceBus.Transport;
 
 namespace Rhino.ServiceBus.RabbitMQ
 {
+    [CLSCompliant(false)]
     public class RabbitMQQueueStrategy
     {
         private readonly RabbitMQConnectionProvider _connectionProvider;
@@ -18,7 +18,7 @@ namespace Rhino.ServiceBus.RabbitMQ
         {
             _endpoint = endpoint;
             _connectionProvider = connectionProvider;
-            
+
             var addr = RabbitMQAddress.From(endpoint);
             SubscriptionQueue = addr.ForSubQueue(SubQueue.Subscriptions).ToUri();
             ErrorQueue = addr.ForSubQueue(SubQueue.Errors).ToUri();
@@ -30,7 +30,7 @@ namespace Rhino.ServiceBus.RabbitMQ
         public Uri DiscardedQueue { get; }
 
         public void InitializeQueue()
-        {            
+        {
             Initialize(_endpoint);
             Initialize(SubscriptionQueue);
             Initialize(ErrorQueue);
@@ -40,7 +40,7 @@ namespace Rhino.ServiceBus.RabbitMQ
         private void Initialize(Uri uri)
         {
             var addr = RabbitMQAddress.From(uri);
-          
+
             //_connectionProvider.DeclareExchange(addr, name, "topic");
             _connectionProvider.DeclareQueue(addr, addr.QueueName, true);
             //_connectionProvider.BindQueue(addr, name, name, routingKeys);

@@ -4,6 +4,7 @@ using Rhino.ServiceBus.Impl;
 
 namespace Rhino.ServiceBus.RabbitMQ
 {
+    [CLSCompliant(false)]
     public class RabbitMQCurrentMessageInformation : CurrentMessageInformation
     {
         public RabbitMQCurrentMessageInformation(RabbitMQMessage msg)

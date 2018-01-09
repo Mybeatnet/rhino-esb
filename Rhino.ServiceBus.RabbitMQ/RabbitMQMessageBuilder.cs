@@ -3,13 +3,13 @@ using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.IO;
 using System.Linq;
-using RabbitMQ.Client.Framing;
 using Rhino.ServiceBus.Internal;
 using Rhino.ServiceBus.Messages;
 using Rhino.ServiceBus.Transport;
 
 namespace Rhino.ServiceBus.RabbitMQ
 {
+    [CLSCompliant(false)]
     public class RabbitMQMessageBuilder : IMessageBuilder<RabbitMQMessage>
     {
         private readonly IMessageSerializer _messageSerializer;
@@ -43,6 +43,8 @@ namespace Rhino.ServiceBus.RabbitMQ
                     ? (int) timeToDelivery.TotalMilliseconds
                     : 0;
             }
+
+            MessageBuilt?.Invoke(message);
 
             return message;
         }

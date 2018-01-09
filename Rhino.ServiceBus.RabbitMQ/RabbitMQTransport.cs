@@ -3,17 +3,16 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using System.Xml;
 using Common.Logging;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using Rhino.ServiceBus.Impl;
 using Rhino.ServiceBus.Internal;
 using Rhino.ServiceBus.Transport;
-using Rhino.ServiceBus.Util;
 
 namespace Rhino.ServiceBus.RabbitMQ
 {
+    [CLSCompliant(false)]
     public class RabbitMQTransport : ITransport
     {
         private static readonly ILog _logger = LogManager.GetLogger<RabbitMQTransport>();
@@ -23,9 +22,9 @@ namespace Rhino.ServiceBus.RabbitMQ
         private readonly RabbitMQConnectionProvider _connectionProvider;
         private readonly RabbitMQAddress _inputAddress;
         private readonly IMessageBuilder<RabbitMQMessage> _messageBuilder;
+        private readonly RabbitMQQueueStrategy _queueStrategy;
         private readonly IMessageSerializer _serializer;
         private readonly ITransactionStrategy _txStrategy;
-        private readonly RabbitMQQueueStrategy _queueStrategy;
 
         private RabbitMQConsumer[] _consumers;
 
@@ -64,6 +63,7 @@ namespace Rhino.ServiceBus.RabbitMQ
                 cons.Start();
 
             HaveStarted = true;
+            Started?.Invoke();
         }
 
         public Endpoint Endpoint { get; }
@@ -146,10 +146,10 @@ namespace Rhino.ServiceBus.RabbitMQ
             {
                 case MessageType.AdministrativeMessageMarker:
                     ProcessMessage(model, arg,
-                           AdministrativeMessageArrived,
-                           AdministrativeMessageProcessingCompleted,
-                           null,
-                           null);
+                        AdministrativeMessageArrived,
+                        AdministrativeMessageProcessingCompleted,
+                        null,
+                        null);
                     break;
                 case MessageType.ShutDownMessageMarker:
                     model.BasicAck(arg.DeliveryTag, false);
@@ -159,12 +159,11 @@ namespace Rhino.ServiceBus.RabbitMQ
                 case MessageType.TimeoutMessageMarker:
                 default:
                     ProcessMessage(model, arg,
-                           MessageArrived,
-                           MessageProcessingCompleted,
-                           BeforeMessageTransactionCommit,
-                           BeforeMessageTransactionRollback);
+                        MessageArrived,
+                        MessageProcessingCompleted,
+                        BeforeMessageTransactionCommit,
+                        BeforeMessageTransactionRollback);
                     break;
-
             }
         }
 
@@ -192,7 +191,9 @@ namespace Rhino.ServiceBus.RabbitMQ
                 {
                     object[] messages = null;
                     using (var ms = new MemoryStream(arg.Body))
+                    {
                         messages = _serializer.Deserialize(ms);
+                    }
 
                     try
                     {
@@ -216,11 +217,12 @@ namespace Rhino.ServiceBus.RabbitMQ
                 {
                     exception = ex;
                     _logger.Error("Failed to deserialize message", ex);
+                    MessageSerializationException?.Invoke(msgInfo, ex);
                 }
                 finally
                 {
                     Action sendMessageBackToQueue = null;
-                    if (rabbitMsg != null && (Endpoint.Transactional == false))
+                    if ((rabbitMsg != null) && (Endpoint.Transactional == false))
                         sendMessageBackToQueue = () => SendMessageToQueue(rabbitMsg, Endpoint);
                     var messageHandlingCompletion = new MessageHandlingCompletion(tx, sendMessageBackToQueue, exception,
                         messageCompleted, beforeTransactionCommit, beforeTransactionRollback, _logger,
@@ -263,7 +265,7 @@ namespace Rhino.ServiceBus.RabbitMQ
         {
             _logger.DebugFormat("Discarding message {0} ({1}) because there are no consumers for it.",
                 message, _currentMessageInformation.TransportMessageId);
-            Send(new Endpoint { Uri = _queueStrategy.DiscardedQueue }, new[] { message });
+            Send(new Endpoint {Uri = _queueStrategy.DiscardedQueue}, new[] {message});
         }
 
 
@@ -275,7 +277,7 @@ namespace Rhino.ServiceBus.RabbitMQ
             using (var channel = _connectionProvider.Open(addr, true))
             {
                 while (true)
-                {                    
+                {
                     var msg = channel.BasicGet(addr.QueueName, false);
                     if (msg == null)
                         yield break;
@@ -288,7 +290,7 @@ namespace Rhino.ServiceBus.RabbitMQ
                             channel.BasicNack(msg.DeliveryTag, false, true);
                     });
                     yield return new RabbitMQMessage(msg.Body, msg.BasicProperties);
-                }                    
+                }
             }
         }
 
