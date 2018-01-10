@@ -38,11 +38,5 @@ namespace Rhino.ServiceBus.Util
             }
             return headers;
         }
-
-        public static object[] Deserialize(this IMessageSerializer serializer, byte[] body)
-        {
-            using (var ms = new MemoryStream(body))
-                return serializer.Deserialize(ms);
-        }
     }
 }

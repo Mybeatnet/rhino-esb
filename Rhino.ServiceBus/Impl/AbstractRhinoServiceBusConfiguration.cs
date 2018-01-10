@@ -152,5 +152,16 @@ namespace Rhino.ServiceBus.Impl
             busContainerBuilder = builder;
             builder.WithInterceptor(new ConsumerInterceptor());
         }
+
+        public AbstractRhinoServiceBusConfiguration AddAssembly(Assembly asm)
+        {
+            scanAssemblies.Add(asm);
+            return this;
+        }
+
+        public AbstractRhinoServiceBusConfiguration AddAssemblyContaining<T>()
+        {
+            return AddAssembly(typeof(T).Assembly);
+        }
     }
 }

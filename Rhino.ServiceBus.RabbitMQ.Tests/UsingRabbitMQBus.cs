@@ -21,6 +21,7 @@ namespace Rhino.ServiceBus.RabbitMQ.Tests
 
             container = new WindsorContainer();
             new RhinoServiceBusConfiguration()
+                .UseRabbitMQ()
                 .UseCastleWindsor(container)
                 .UseStandaloneConfigurationFile("RabbitMQ.config")
                 .Configure();

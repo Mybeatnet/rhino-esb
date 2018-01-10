@@ -63,6 +63,7 @@
     <Compile Include="AmqExtensions.cs" />
     <Compile Include="RabbitMQErrorAction.cs" />
     <Compile Include="ModelWrapper.cs" />
+    <Compile Include="RabbitMQExtensions.cs" />
     <Compile Include="RabbitMQQueueCreationModule.cs" />
     <Compile Include="RabbitMQConnectionProvider.cs" />
     <Compile Include="RabbitMQQueueStrategy.cs" />
