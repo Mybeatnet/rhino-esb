@@ -39,11 +39,8 @@ namespace Rhino.ServiceBus.RabbitMQ
             RoutingKeys = routingKeys;
             RouteByType = routeByType;
 
-            _log.Info("Broker:" + broker);
-            _log.Info("Exchange:" + exchange);
-            _log.Info("QueueName:" + queueName);
-            _log.Info("RoutingKeys:" + routingKeys);
-            _log.Info("RouteByType:" + routeByType);
+            _log.DebugFormat("Broker: {0}, Exchange: {1}, QueueName: {2}, RoutingKeys: {3}, RouteByType: {4}",
+                broker, exchange, queueName, routingKeys, routeByType);
         }
 
         public string Broker { get; }

@@ -7,7 +7,6 @@ using Castle.Windsor;
 using Rhino.ServiceBus.Impl;
 using Rhino.ServiceBus.Internal;
 using Rhino.ServiceBus.Transport;
-using Rhino.ServiceBus.Util;
 using Xunit;
 
 namespace Rhino.ServiceBus.RabbitMQ.Tests
@@ -111,6 +110,16 @@ namespace Rhino.ServiceBus.RabbitMQ.Tests
             Assert.True(StringConsumer.Wait.WaitOne(TimeSpan.FromSeconds(100), false));
 
             Assert.Equal("hello", StringConsumer.Value);
+        }
+
+        [Fact]
+        public void Can_send_without_transaction()
+        {
+            bus.Send(bus.Endpoint, "hi there");
+
+            Assert.True(StringConsumer.Wait.WaitOne(TimeSpan.FromSeconds(100), false));
+
+            Assert.Equal("hi there", StringConsumer.Value);
         }
     }
 }

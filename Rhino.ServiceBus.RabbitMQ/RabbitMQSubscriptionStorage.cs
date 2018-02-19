@@ -45,8 +45,7 @@ namespace Rhino.ServiceBus.RabbitMQ
             _reflection = reflection;
             _messageSerializer = messageSerializer;
             _connectionProvider = connectionProvider;
-            _subscriptionQueue = RabbitMQAddress.From(queueBusListensTo);
-            _subscriptionQueue.Exchange += ".subscriptions";
+            _subscriptionQueue = RabbitMQAddress.From(queueBusListensTo);            
             _subscriptionQueue.QueueName += ".subscriptions";
         }
 
