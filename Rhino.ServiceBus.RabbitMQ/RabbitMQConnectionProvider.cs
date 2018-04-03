@@ -163,7 +163,25 @@ namespace Rhino.ServiceBus.RabbitMQ
                 foreach (var key in keys)
                 {
                     _log.InfoFormat("Binding Key {0} on Queue {1} on Exchange {2}", key, queue, exchange);
-                    channel.QueueBind(queue, exchange, key);
+                    channel.QueueBind(queue, exchange, key);                    
+                }
+            }
+        }
+
+        public void UnbindQueue(RabbitMQAddress broker, string exchange, string queue, string routingKeys)
+        {
+            if (string.IsNullOrEmpty(exchange))
+                return;
+
+            using (var channel = Open(broker, true))
+            {
+                var keys = routingKeys.Split(new[] {" "}, StringSplitOptions.RemoveEmptyEntries);
+                keys = keys.Length == 0 ? new[] {queue} : keys;
+
+                foreach (var key in keys)
+                {
+                    _log.InfoFormat("Binding Key {0} on Queue {1} on Exchange {2}", key, queue, exchange);
+                    channel.QueueUnbind(queue, exchange, key);                    
                 }
             }
         }

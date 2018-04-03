@@ -1,19 +1,18 @@
 using System;
-using System.Linq;
 using Rhino.ServiceBus.Config;
 using Rhino.ServiceBus.Impl;
 using Rhino.ServiceBus.Internal;
-using Rhino.ServiceBus.Msmq;
-using Rhino.ServiceBus.Msmq.TransportActions;
+using Rhino.ServiceBus.LoadBalancer;
 using Rhino.ServiceBus.Transport;
 
 namespace Rhino.ServiceBus.RabbitMQ
 {
     public class RabbitMQTransportConfigurationAware : IBusConfigurationAware
     {
-        public void Configure(AbstractRhinoServiceBusConfiguration config, IBusContainerBuilder builder, IServiceLocator locator)
+        public void Configure(AbstractRhinoServiceBusConfiguration config, IBusContainerBuilder builder,
+            IServiceLocator locator)
         {
-            if (!(config is RhinoServiceBusConfiguration) && !(config is LoadBalancer.LoadBalancerConfiguration))
+            if (!(config is RhinoServiceBusConfiguration) && !(config is LoadBalancerConfiguration))
                 return;
 
             if (!config.Endpoint.Scheme.Equals("rmq", StringComparison.InvariantCultureIgnoreCase))
@@ -22,7 +21,7 @@ namespace Rhino.ServiceBus.RabbitMQ
             if (!config.DisableAutoQueueCreation)
                 RegisterQueueCreation(builder, locator);
 
-            RegisterRabbitMqTransport(config, builder, locator);
+            RegisterRabbitMqTransport((RhinoServiceBusConfiguration) config, builder, locator);
         }
 
         private void RegisterQueueCreation(IBusContainerBuilder b, IServiceLocator l)
@@ -31,7 +30,7 @@ namespace Rhino.ServiceBus.RabbitMQ
                 () => new RabbitMQQueueCreationModule(l.Resolve<RabbitMQQueueStrategy>()));
         }
 
-        private void RegisterRabbitMqTransport(AbstractRhinoServiceBusConfiguration c, IBusContainerBuilder b,
+        private void RegisterRabbitMqTransport(RhinoServiceBusConfiguration c, IBusContainerBuilder b,
             IServiceLocator l)
         {
             b.RegisterSingleton(() => new RabbitMQConnectionProvider());
@@ -48,9 +47,9 @@ namespace Rhino.ServiceBus.RabbitMQ
 
             b.RegisterSingleton<ISubscriptionStorage>(() => new RabbitMQSubscriptionStorage(
                 l.Resolve<IReflection>(),
-                l.Resolve<IMessageSerializer>(),
                 c.Endpoint,
-                l.Resolve<RabbitMQConnectionProvider>()));
+                l.Resolve<RabbitMQConnectionProvider>(),
+                c.MessageOwners));
 
             b.RegisterSingleton<ITransport>(() => new RabbitMQTransport(
                 l.Resolve<IMessageSerializer>(),
