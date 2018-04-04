@@ -49,11 +49,13 @@ namespace Rhino.ServiceBus.Tests
                 PongHandler.ResetEvent = new ManualResetEvent(false);
                 PongHandler.GotReply = false;
 
-                wait.WaitOne(TimeSpan.FromSeconds(30), false);
+                if (!wait.WaitOne(TimeSpan.FromSeconds(30), false))
+                    throw new TimeoutException("Did not subscribe within 30 seconds");
 
                 bus2.Publish(new Ping());
 
-                PongHandler.ResetEvent.WaitOne(TimeSpan.FromSeconds(30), false);
+                if (!PongHandler.ResetEvent.WaitOne(TimeSpan.FromSeconds(30), false))
+                    throw new TimeoutException("Did not receive Ping within 30 seconds");
 
                 Assert.True(PongHandler.GotReply);
             }

@@ -60,13 +60,15 @@ namespace Rhino.ServiceBus.Spring
         {
             var busConfig = (RhinoServiceBusConfiguration)config;
 
-            applicationContext.RegisterSingleton<IStartableServiceBus>(() => new DefaultServiceBus(applicationContext.Get<IServiceLocator>(),
-                                                   applicationContext.Get<ITransport>(),
-                                                   applicationContext.Get<ISubscriptionStorage>(),
-                                                   applicationContext.Get<IReflection>(),
-                                                   applicationContext.GetAll<IMessageModule>().ToArray(),
-                                                   busConfig.MessageOwners.ToArray(),
-                                                   applicationContext.Get<IEndpointRouter>()));
+            applicationContext.RegisterSingleton<IStartableServiceBus>(() =>
+                new DefaultServiceBus(applicationContext.Get<IServiceLocator>(),
+                    applicationContext.Get<ITransport>(),
+                    applicationContext.Get<ISubscriptionStorage>(),
+                    applicationContext.Get<IReflection>(),
+                    applicationContext.GetAll<IMessageModule>().ToArray(),
+                    busConfig.MessageOwners.ToArray(),
+                    applicationContext.Get<IEndpointRouter>(),
+                    applicationContext.Get<ISubscribeAction>()));
 
             applicationContext.RegisterSingleton(() => new CreateQueuesAction(applicationContext.Get<IQueueStrategy>(), applicationContext.Get<IServiceBus>()));
         }

@@ -94,6 +94,8 @@ namespace Rhino.ServiceBus.Config
                 l.Resolve<ITransactionStrategy>()));
 
             b.RegisterAll<IMsmqTransportAction>(typeof(ErrorAction));
+
+            b.RegisterSingleton<ISubscribeAction>(() => new DefaultSubscribeAction());
         }
     }
 }

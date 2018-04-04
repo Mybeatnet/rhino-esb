@@ -58,6 +58,8 @@ namespace Rhino.ServiceBus.Config
                 l.Resolve<IServiceLocator>()));
 
             b.RegisterSingleton<QueueManagerConfiguration>(() => queueManagerConfiguration);
+
+            b.RegisterSingleton<ISubscribeAction>(() => new DefaultSubscribeAction());
         }
     }
 }

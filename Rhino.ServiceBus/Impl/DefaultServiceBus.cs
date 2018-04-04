@@ -24,6 +24,7 @@ namespace Rhino.ServiceBus.Impl
         private readonly MessageOwnersSelector messageOwners;
     	[ThreadStatic] public static object currentMessage;
         private readonly IEndpointRouter endpointRouter;
+        private readonly ISubscribeAction subscribeAction;
         private IEnumerable<IServiceBusAware> serviceBusAware = new IServiceBusAware[0];
 
 	    public DefaultServiceBus(
@@ -33,10 +34,12 @@ namespace Rhino.ServiceBus.Impl
             IReflection reflection,
             IMessageModule[] modules,
             MessageOwner[] messageOwners, 
-            IEndpointRouter endpointRouter)
+            IEndpointRouter endpointRouter, 
+            ISubscribeAction subscribeAction)
         {
             this.transport = transport;
             this.endpointRouter = endpointRouter;
+            this.subscribeAction = subscribeAction;
             this.messageOwners = new MessageOwnersSelector(messageOwners, endpointRouter);
             this.subscriptionStorage = subscriptionStorage;
             this.reflection = reflection;
@@ -169,6 +172,8 @@ namespace Rhino.ServiceBus.Impl
                 aware.BusStarting(this);
 
             logger.DebugFormat("Starting the bus for {0}", Endpoint);
+            
+            subscribeAction.Init(this);
 
             var subscriptionAsModule = subscriptionStorage as IMessageModule;
             if (subscriptionAsModule != null)
@@ -176,6 +181,7 @@ namespace Rhino.ServiceBus.Impl
                 logger.DebugFormat("Initating subscription storage as message module: {0}", subscriptionAsModule);
                 subscriptionAsModule.Init(transport, this);
             }
+
             foreach (var module in modules)
             {
                 logger.DebugFormat("Initating message module: {0}", module);
@@ -217,11 +223,7 @@ namespace Rhino.ServiceBus.Impl
 
             	var endpoint = endpointRouter.GetRoutedEndpoint(owner.Endpoint);
             	endpoint.Transactional = owner.Transactional;
-            	Send(endpoint, new AddSubscription
-                {
-                    Endpoint = Endpoint,
-                    Type = type.FullName
-                });
+                subscribeAction.Invoke(type, endpoint);
             }
         }
 

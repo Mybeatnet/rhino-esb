@@ -173,6 +173,7 @@
     <Compile Include="Hosting\RemoteAppDomainHost.cs" />
     <Compile Include="ICustomizeOutgoingMessages.cs" />
     <Compile Include="Impl\DefaultHandler.cs" />
+    <Compile Include="Impl\DefaultSubscribeAction.cs" />
     <Compile Include="Impl\EndpointRouter.cs" />
     <Compile Include="Endpoint.cs" />
     <Compile Include="Config\IBusContainerBuilder.cs" />
@@ -180,6 +181,7 @@
     <Compile Include="Internal\IHandler.cs" />
     <Compile Include="Internal\IServiceLocator.cs" />
     <Compile Include="Internal\IStartable.cs" />
+    <Compile Include="Internal\ISubscribeAction.cs" />
     <Compile Include="IServiceBusAware.cs" />
     <Compile Include="Impl\DefaultServiceBus.cs" />
     <Compile Include="Impl\DisposableAction.cs" />
