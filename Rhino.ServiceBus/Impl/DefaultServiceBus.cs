@@ -25,6 +25,7 @@ namespace Rhino.ServiceBus.Impl
     	[ThreadStatic] public static object currentMessage;
         private readonly IEndpointRouter endpointRouter;
         private readonly ISubscribeAction subscribeAction;
+        private readonly IPublishAction publishAction;
         private IEnumerable<IServiceBusAware> serviceBusAware = new IServiceBusAware[0];
 
 	    public DefaultServiceBus(
@@ -35,11 +36,13 @@ namespace Rhino.ServiceBus.Impl
             IMessageModule[] modules,
             MessageOwner[] messageOwners, 
             IEndpointRouter endpointRouter, 
-            ISubscribeAction subscribeAction)
+            ISubscribeAction subscribeAction,
+            IPublishAction publishAction)
         {
             this.transport = transport;
             this.endpointRouter = endpointRouter;
             this.subscribeAction = subscribeAction;
+            this.publishAction = publishAction;
             this.messageOwners = new MessageOwnersSelector(messageOwners, endpointRouter);
             this.subscriptionStorage = subscriptionStorage;
             this.reflection = reflection;
@@ -56,7 +59,7 @@ namespace Rhino.ServiceBus.Impl
 
         public void Publish(params object[] messages)
         {
-            if (PublishInternal(messages) == false)
+            if (publishAction.Publish(messages) == false)
                 throw new MessagePublicationException("There were no subscribers for (" +
                                                       messages.First() + ")"
                     );
@@ -64,7 +67,7 @@ namespace Rhino.ServiceBus.Impl
 
         public void Notify(params object[] messages)
         {
-            PublishInternal(messages);
+            publishAction.Publish(messages);
         }
 
         public void Reply(params object[] messages)
@@ -223,7 +226,7 @@ namespace Rhino.ServiceBus.Impl
 
             	var endpoint = endpointRouter.GetRoutedEndpoint(owner.Endpoint);
             	endpoint.Transactional = owner.Transactional;
-                subscribeAction.Invoke(type, endpoint);
+                subscribeAction.Subscribe(type, endpoint);
             }
         }
 
@@ -243,11 +246,7 @@ namespace Rhino.ServiceBus.Impl
             {
             	var endpoint = endpointRouter.GetRoutedEndpoint(owner.Endpoint);
             	endpoint.Transactional = owner.Transactional;
-            	Send(endpoint, new RemoveSubscription
-                {
-                    Endpoint = Endpoint,
-                    Type = type.FullName
-                });
+                subscribeAction.Unsubscribe(type, endpoint);
             }
         }
 
@@ -330,37 +329,6 @@ namespace Rhino.ServiceBus.Impl
                     Subscribe(msg);
                 }
             }
-        }
-
-        private bool PublishInternal(object[] messages)
-        {
-            if (messages == null)
-                throw new ArgumentNullException("messages");
-
-            bool sentMsg = false;
-            if (messages.Length == 0)
-                throw new MessagePublicationException("Cannot publish an empty message batch");
-
-            var subscriptions = new HashSet<Uri>();
-            foreach (var message in messages)
-            {
-                Type messageType = message.GetType();
-                while (messageType != null)
-                {
-                    subscriptions.UnionWith(subscriptionStorage.GetSubscriptionsFor(messageType));
-                    foreach (Type interfaceType in messageType.GetInterfaces())
-                    {
-                        subscriptions.UnionWith(subscriptionStorage.GetSubscriptionsFor(interfaceType));
-                    }
-                    messageType = messageType.BaseType;
-                }
-            }
-            foreach (Uri subscription in subscriptions)
-            {
-                transport.Send(endpointRouter.GetRoutedEndpoint(subscription), messages);
-                sentMsg = true;
-            }
-            return sentMsg;
         }
 
         public bool Transport_OnMessageArrived(CurrentMessageInformation msg)
