@@ -150,6 +150,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="SubscribeToMe.cs" />
     <Compile Include="UsingRabbitMQBus.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

@@ -67,6 +67,7 @@
     <Compile Include="RabbitMQQueueCreationModule.cs" />
     <Compile Include="RabbitMQConnectionProvider.cs" />
     <Compile Include="RabbitMQQueueStrategy.cs" />
+    <Compile Include="RabbitMQSubscribeAction.cs" />
     <Compile Include="RabbitMQSubscriptionStorage.cs" />
     <Compile Include="RabbitMQTransaction.cs" />
     <Compile Include="RabbitMQTransportConfigurationAware.cs" />

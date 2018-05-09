@@ -26,6 +26,7 @@ namespace Rhino.ServiceBus.RabbitMQ.Tests
                 .Configure();
             container.Register(Component.For<StringConsumer>());
             container.Register(Component.For<ThrowingIntConsumer>());
+            container.Register(Component.For<SubscribeToMeConsumer>());
             bus = container.Resolve<IStartableServiceBus>();
             bus.Start();
             var queues = container.Resolve<RabbitMQQueueStrategy>();
@@ -120,6 +121,29 @@ namespace Rhino.ServiceBus.RabbitMQ.Tests
             Assert.True(StringConsumer.Wait.WaitOne(TimeSpan.FromSeconds(100), false));
 
             Assert.Equal("hi there", StringConsumer.Value);
+        }
+
+        [Fact]
+        public void Can_subscribe_to_message()
+        {
+            bus.Subscribe<SubscribeToMe>();
+            bus.Publish(new SubscribeToMe {Data = "Test Publish"});
+            if (!SubscribeToMeConsumer.Wait.WaitOne(5000))
+                throw new TimeoutException("Did not receive message in 5 seconds");
+            
+            Assert.Equal("Test Publish", SubscribeToMeConsumer.Data);
+        }
+    }
+
+    public class SubscribeToMeConsumer : Consumer<SubscribeToMe>.SkipAutomaticSubscription
+    {
+        public static string Data { get; set; }
+        public static AutoResetEvent Wait { get;  } = new AutoResetEvent(false);
+
+        public void Consume(SubscribeToMe message)
+        {
+            Data = message.Data;
+            Wait.Set();
         }
     }
 }
