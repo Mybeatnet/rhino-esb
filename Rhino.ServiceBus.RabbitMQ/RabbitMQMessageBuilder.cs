@@ -32,7 +32,7 @@ namespace Rhino.ServiceBus.RabbitMQ
 
             message.Data = Serialize(messageInformation.Messages);
             message.MessageId = Guid.NewGuid();
-            message.Priority = (isAdmin ? 5 : 0);
+            message.Priority = (isAdmin ? 5 : MapPriority(messageInformation.Priority));
             message.ReplyTo = _endpoint.Uri.ToString();
             message.Headers = GetHeaders(messageInformation);
             message.Headers["MessageType"] = (int)GetMessageType(messageInformation.Messages);
@@ -47,6 +47,31 @@ namespace Rhino.ServiceBus.RabbitMQ
             MessageBuilt?.Invoke(message);
 
             return message;
+        }
+
+        private int MapPriority(RhinoMessagePriority priority)
+        {
+            switch (priority)
+            {
+                case RhinoMessagePriority.Lowest:
+                    return 0;
+                case RhinoMessagePriority.VeryLow:
+                    return 1;
+                case RhinoMessagePriority.Low:
+                    return 2;
+                case RhinoMessagePriority.Normal:
+                    return 3;
+                case RhinoMessagePriority.AboveNormal:
+                    return 4;
+                case RhinoMessagePriority.High:
+                    return 5;
+                case RhinoMessagePriority.VeryHigh:
+                    return 6;
+                case RhinoMessagePriority.Highest:
+                    return 7;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(priority), priority, null);
+            }
         }
 
         private IDictionary<string, object> GetHeaders(OutgoingMessageInformation messageInformation)

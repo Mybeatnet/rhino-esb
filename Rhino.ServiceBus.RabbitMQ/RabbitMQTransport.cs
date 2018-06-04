@@ -70,7 +70,7 @@ namespace Rhino.ServiceBus.RabbitMQ
         public int ThreadCount { get; }
         public CurrentMessageInformation CurrentMessageInformation => _currentMessageInformation;
 
-        public void Send(Endpoint destination, object[] msgs)
+        public void Send(Endpoint destination, object[] msgs, RhinoMessagePriority priority)
         {
             if (HaveStarted == false)
                 throw new InvalidOperationException("Cannot send a message before transport is started");
@@ -79,7 +79,8 @@ namespace Rhino.ServiceBus.RabbitMQ
             {
                 Destination = destination,
                 Messages = msgs,
-                Source = Endpoint
+                Source = Endpoint,
+                Priority = priority
             };
 
             var message = _messageBuilder.BuildFromMessageBatch(messageInformation);
@@ -99,7 +100,7 @@ namespace Rhino.ServiceBus.RabbitMQ
             });
         }
 
-        public void Send(Endpoint endpoint, DateTime processAgainAt, object[] msgs)
+        public void Send(Endpoint endpoint, DateTime processAgainAt, object[] msgs, RhinoMessagePriority priority)
         {
             if (HaveStarted == false)
                 throw new InvalidOperationException("Cannot send a message before transport is started");
@@ -108,7 +109,8 @@ namespace Rhino.ServiceBus.RabbitMQ
             {
                 Destination = endpoint,
                 Messages = msgs,
-                Source = Endpoint
+                Source = Endpoint,
+                Priority = priority
             };
             var message = _messageBuilder.BuildFromMessageBatch(messageInformation);
             message.Headers["x-delay"] = (int) Math.Max(processAgainAt.Subtract(DateTime.Now).TotalMilliseconds, 0);
@@ -118,7 +120,7 @@ namespace Rhino.ServiceBus.RabbitMQ
 
         public void Reply(params object[] messages)
         {
-            Send(new Endpoint {Uri = _currentMessageInformation.Source}, messages);
+            Send(new Endpoint {Uri = _currentMessageInformation.Source}, messages, RhinoMessagePriority.Normal);
         }
 
         public event Action<CurrentMessageInformation> MessageSent;
@@ -277,7 +279,7 @@ namespace Rhino.ServiceBus.RabbitMQ
         {
             _logger.DebugFormat("Discarding message {0} ({1}) because there are no consumers for it.",
                 message, _currentMessageInformation.TransportMessageId);
-            Send(new Endpoint {Uri = _queueStrategy.DiscardedQueue}, new[] {message});
+            Send(new Endpoint {Uri = _queueStrategy.DiscardedQueue}, new[] {message}, RhinoMessagePriority.Low);
         }
 
 
