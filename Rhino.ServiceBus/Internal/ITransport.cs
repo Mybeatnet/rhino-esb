@@ -15,8 +15,8 @@ namespace Rhino.ServiceBus.Internal
         /// </summary>
         CurrentMessageInformation CurrentMessageInformation { get; }
 
-        void Send(Endpoint destination, object[] msgs);
-        void Send(Endpoint endpoint, DateTime processAgainAt, object[] msgs);
+        void Send(Endpoint destination, object[] msgs, RhinoMessagePriority priority);
+        void Send(Endpoint endpoint, DateTime processAgainAt, object[] msgs, RhinoMessagePriority priority);
 
         void Reply(params object[] messages);
 

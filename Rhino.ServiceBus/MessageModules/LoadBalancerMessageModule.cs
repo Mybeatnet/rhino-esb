@@ -59,7 +59,7 @@ namespace Rhino.ServiceBus.MessageModules
                                endpoint,
                                theTransport.Endpoint,
                                readyToWork.Length);
-            theTransport.Send(endpoint, readyToWork);
+            theTransport.Send(endpoint, readyToWork, RhinoMessagePriority.AboveNormal);
         }
 
         private void Transport_OnMessageProcessingCompleted(CurrentMessageInformation t1, Exception t2)
@@ -79,7 +79,7 @@ namespace Rhino.ServiceBus.MessageModules
                 {
                     Endpoint = theTransport.Endpoint.Uri
                 }
-            });
+            }, RhinoMessagePriority.AboveNormal);
         }
 
 		public void Stop(ITransport transport, IServiceBus bus)

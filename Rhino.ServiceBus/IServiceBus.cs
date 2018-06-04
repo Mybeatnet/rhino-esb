@@ -49,6 +49,18 @@ namespace Rhino.ServiceBus
         /// </summary>
         void Send(params object[] messages);
 
+        /// <summary>
+        /// Send the message directly to the default endpoint
+        /// for this type of message with the specified priority
+        /// </summary>
+        void PrioritySend(RhinoMessagePriority priority, params object[] messages);
+
+        /// <summary>
+        /// Send the message directly to the specified endpoint
+        /// with the specified priority
+        /// </summary>
+        void PrioritySend(RhinoMessagePriority priority, Endpoint endpoint, params object[] messages);
+
 		/// <summary>
 		/// Invoke consumers for the relevant messages managed by the current
 		/// service bus instance. This happens immediately and on the current thread.

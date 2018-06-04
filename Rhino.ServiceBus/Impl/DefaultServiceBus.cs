@@ -83,18 +83,29 @@ namespace Rhino.ServiceBus.Impl
 
         public void Send(Endpoint endpoint, params object[] messages)
         {
+            PrioritySend(RhinoMessagePriority.Normal, endpoint, messages);
+        }
+
+        public void Send(params object[] messages)
+        {
+            PrioritySend(RhinoMessagePriority.Normal, messages);
+        }
+
+        public void PrioritySend(RhinoMessagePriority priority, Endpoint endpoint, params object[] messages)
+        {
             if (messages == null)
                 throw new ArgumentNullException("messages");
 
             if (messages.Length == 0)
                 throw new MessagePublicationException("Cannot send empty message batch");
 
-            transport.Send(endpoint, messages);
+            transport.Send(endpoint, messages, priority);
         }
 
-        public void Send(params object[] messages)
+
+        public void PrioritySend(RhinoMessagePriority priority, params object[] messages)
         {
-            Send(messageOwners.GetEndpointForMessageBatch(messages), messages);
+            PrioritySend(priority, messageOwners.GetEndpointForMessageBatch(messages), messages);
         }
 
 		public void ConsumeMessages(params object[] messages)
@@ -303,7 +314,7 @@ namespace Rhino.ServiceBus.Impl
     	/// <param name="msgs">The messages.</param>
     	public void DelaySend(Endpoint endpoint, DateTime time, params object[] msgs)
     	{
-    		transport.Send(endpoint, time, msgs);
+    		transport.Send(endpoint, time, msgs, RhinoMessagePriority.Normal);
     	}
 
         /// <summary>

@@ -43,7 +43,7 @@ namespace Rhino.ServiceBus.Impl
 
             foreach (var subscription in subscriptions)
             {
-                transport.Send(endpointRouter.GetRoutedEndpoint(subscription), messages);
+                transport.Send(endpointRouter.GetRoutedEndpoint(subscription), messages, RhinoMessagePriority.Normal);
                 sentMsg = true;
             }
 

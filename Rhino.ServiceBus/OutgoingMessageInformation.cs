@@ -5,6 +5,11 @@ namespace Rhino.ServiceBus
 {
     public class OutgoingMessageInformation
     {
+        public OutgoingMessageInformation()
+        {
+            Priority = RhinoMessagePriority.Normal;
+        }
+
         public DateTime? DeliverBy { get; set; }
 
         /// <summary>
@@ -21,5 +26,19 @@ namespace Rhino.ServiceBus
         /// The current endpoint.  This may be null on a one-way bus.
         /// </summary>
         public Endpoint Source { get; set; }
+
+        public RhinoMessagePriority Priority { get; set; }
+    }
+
+    public enum RhinoMessagePriority
+    {        
+        Lowest = 0,
+        VeryLow = 1,
+        Low = 2,        
+        Normal = 3,
+        AboveNormal = 4,
+        High = 5,
+        VeryHigh = 6,
+        Highest = 7
     }
 }

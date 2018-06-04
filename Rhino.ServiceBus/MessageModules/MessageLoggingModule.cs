@@ -62,7 +62,7 @@ namespace Rhino.ServiceBus.MessageModules
 
         private void Send(object obj)
         {
-            transport.Send(logEndpoint, new []{obj});
+            transport.Send(logEndpoint, new []{obj}, RhinoMessagePriority.Normal);
         }
 
         private void Transport_OnMessageSerializationException(CurrentMessageInformation info, Exception t)

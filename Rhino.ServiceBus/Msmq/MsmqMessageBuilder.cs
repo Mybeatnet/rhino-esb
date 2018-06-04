@@ -42,7 +42,8 @@ namespace Rhino.ServiceBus.Msmq
                 logger.Error("Error when trying to serialize message.", ex);
                 throw;
             }
-            message.Priority = isAdmin ? MessagePriority.High : MessagePriority.Normal;
+
+            message.Priority = isAdmin ? MessagePriority.High : MapToMessagePriority(messageInformation.Priority);
             if (endpoint != null)
                 message.ResponseQueue = endpoint.InitalizeQueue().ToResponseQueue();
             else
@@ -103,6 +104,31 @@ namespace Rhino.ServiceBus.Msmq
                 copy(message);
 
             return message;
+        }
+
+        private MessagePriority MapToMessagePriority(RhinoMessagePriority source)
+        {
+            switch (source)
+            {
+                case RhinoMessagePriority.Lowest:
+                    return MessagePriority.Lowest;
+                case RhinoMessagePriority.VeryLow:
+                    return MessagePriority.VeryLow;
+                case RhinoMessagePriority.Low:
+                    return MessagePriority.Low;
+                case RhinoMessagePriority.Normal:
+                    return MessagePriority.Normal;
+                case RhinoMessagePriority.AboveNormal:
+                    return MessagePriority.AboveNormal;
+                case RhinoMessagePriority.High:
+                    return MessagePriority.High;
+                case RhinoMessagePriority.VeryHigh:
+                    return MessagePriority.VeryHigh;
+                case RhinoMessagePriority.Highest:
+                    return MessagePriority.Highest;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(source), source, null);
+            }
         }
 
         public void Initialize(Endpoint source)

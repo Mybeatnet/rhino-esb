@@ -69,7 +69,7 @@ namespace Rhino.ServiceBus.Msmq
 			if (currentMessageInformation == null)
 				throw new TransactionException("There is no message to reply to, sorry.");
             logger.DebugFormat("Replying to {0}", currentMessageInformation.Source);
-            Send(endpointRouter.GetRoutedEndpoint(currentMessageInformation.Source), messages);
+            Send(endpointRouter.GetRoutedEndpoint(currentMessageInformation.Source), messages, RhinoMessagePriority.Normal);
 		}
 
         public event Action<CurrentMessageInformation> MessageSent;
@@ -110,7 +110,7 @@ namespace Rhino.ServiceBus.Msmq
                 copy(information, ex);
 	    }
 
-	    public void Send(Endpoint endpoint, DateTime processAgainAt, object[] msgs)
+	    public void Send(Endpoint endpoint, DateTime processAgainAt, object[] msgs, RhinoMessagePriority priority)
 		{
 			if (HaveStarted == false)
 				throw new InvalidOperationException("Cannot send a message before transport is started");
@@ -119,7 +119,8 @@ namespace Rhino.ServiceBus.Msmq
             {
                 Destination = endpoint,
                 Messages = msgs,
-                Source = Endpoint
+                Source = Endpoint,
+                Priority = priority
             };
 			var message = GenerateMsmqMessageFromMessageBatch(messageInformation);
 	        var processAgainBytes = BitConverter.GetBytes(processAgainAt.ToBinary());
@@ -140,17 +141,18 @@ namespace Rhino.ServiceBus.Msmq
             SendMessageToQueue(message, endpoint);
 		}
 
-        public void Send(Endpoint destination, object[] msgs)
+        public void Send(Endpoint destination, object[] msgs, RhinoMessagePriority priority)
 		{
 			if(HaveStarted==false)
 				throw new InvalidOperationException("Cannot send a message before transport is started");
 
-            var messageInformation = new OutgoingMessageInformation
-            {
-                Destination = destination,
-                Messages = msgs,
-                Source = Endpoint
-            };
+		    var messageInformation = new OutgoingMessageInformation
+		    {
+		        Destination = destination,
+		        Messages = msgs,
+		        Source = Endpoint,
+		        Priority = priority
+		    };
             var message = GenerateMsmqMessageFromMessageBatch(messageInformation);
 
             SendMessageToQueue(message, destination);
