@@ -166,7 +166,8 @@ namespace Rhino.ServiceBus.Msmq
 
         public static void TransactionalSend(this MessageQueue self, Message message)
         {            
-            if (self.MachineName == Environment.MachineName && self.Transactional == false) // can't check Transactional property on remote queues
+            // can't check Transactional property on remote queues
+            if (self.MachineName != Environment.MachineName || self.Transactional == false) 
             {
                 self.Send(message, MessageQueueTransactionType.None);
                 return;

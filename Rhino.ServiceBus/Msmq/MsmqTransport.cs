@@ -282,7 +282,7 @@ namespace Rhino.ServiceBus.Msmq
 	    }
 
         private void SendMessageToQueue(Message message, Endpoint endpoint)
-		{
+		{            
 			if (HaveStarted == false)
 				throw new TransportException("Cannot send message before transport is started");
 
