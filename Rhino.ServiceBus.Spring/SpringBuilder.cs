@@ -68,7 +68,8 @@ namespace Rhino.ServiceBus.Spring
                     applicationContext.GetAll<IMessageModule>().ToArray(),
                     busConfig.MessageOwners.ToArray(),
                     applicationContext.Get<IEndpointRouter>(),
-                    applicationContext.Get<ISubscribeAction>()));
+                    applicationContext.Get<ISubscribeAction>(),
+                    applicationContext.Get<IPublishAction>()));
 
             applicationContext.RegisterSingleton(() => new CreateQueuesAction(applicationContext.Get<IQueueStrategy>(), applicationContext.Get<IServiceBus>()));
         }

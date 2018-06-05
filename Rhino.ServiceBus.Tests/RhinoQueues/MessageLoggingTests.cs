@@ -45,8 +45,8 @@ namespace Rhino.ServiceBus.Tests.RhinoQueues
             var innerTransport = container.Resolve<ITransport>();
             innerTransport.Start();
             transport = MockRepository.GenerateStub<ITransport>();
-            transport.Stub(t => t.Send(null, null)).IgnoreArguments()
-                .Do((Delegates.Action<Endpoint, object[]>)(innerTransport.Send));
+            transport.Stub(t => t.Send(null, null, RhinoMessagePriority.Normal)).IgnoreArguments()
+                .Do((Delegates.Action<Endpoint, object[], RhinoMessagePriority>)(innerTransport.Send));
         }
 
         [Fact]

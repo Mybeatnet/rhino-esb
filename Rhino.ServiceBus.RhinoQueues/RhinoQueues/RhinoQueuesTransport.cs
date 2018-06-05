@@ -424,7 +424,7 @@ namespace Rhino.ServiceBus.RhinoQueues
         {
             logger.DebugFormat("Discarding message {0} ({1}) because there are no consumers for it.",
                 message, currentMessageInformation.TransportMessageId);
-            Send(new Endpoint { Uri = endpoint.AddSubQueue(SubQueue.Discarded) }, new[] { message });
+            Send(new Endpoint { Uri = endpoint.AddSubQueue(SubQueue.Discarded) }, new[] { message }, RhinoMessagePriority.Normal);
         }
 
         private object[] DeserializeMessages(Message message)
@@ -476,7 +476,7 @@ namespace Rhino.ServiceBus.RhinoQueues
             get { return currentMessageInformation; }
         }
 
-        public void Send(Endpoint destination, object[] msgs)
+        public void Send(Endpoint destination, object[] msgs, RhinoMessagePriority priority)
         {
             SendInternal(msgs, destination, nv => { });
         }
@@ -490,7 +490,7 @@ namespace Rhino.ServiceBus.RhinoQueues
                 Messages = msgs,
                 Source = Endpoint
             };
-            var payload = messageBuilder.BuildFromMessageBatch(messageInformation);
+            var payload = messageBuilder.BuildFromMessageBatch(messageInformation);            
             logger.DebugFormat("Sending a message with id '{0}' to '{1}'", messageId, destination.Uri);
             customizeHeaders(payload.Headers);
             var transactionOptions = GetTransactionOptions();
@@ -522,7 +522,7 @@ namespace Rhino.ServiceBus.RhinoQueues
             };
         }
 
-        public void Send(Endpoint endpoint, DateTime processAgainAt, object[] msgs)
+        public void Send(Endpoint endpoint, DateTime processAgainAt, object[] msgs, RhinoMessagePriority priority)
         {
             SendInternal(msgs, endpoint,
                 nv =>
@@ -534,7 +534,7 @@ namespace Rhino.ServiceBus.RhinoQueues
 
         public void Reply(params object[] messages)
         {
-            Send(new Endpoint { Uri = currentMessageInformation.Source }, messages);
+            Send(new Endpoint { Uri = currentMessageInformation.Source }, messages, RhinoMessagePriority.Normal);
         }
 
         public event Action<CurrentMessageInformation> MessageSent;

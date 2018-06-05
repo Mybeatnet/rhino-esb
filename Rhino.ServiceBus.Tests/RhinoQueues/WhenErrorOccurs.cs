@@ -54,7 +54,7 @@ namespace Rhino.ServiceBus.Tests.RhinoQueues
             {
                 count++;
             };
-            transport.Send(transport.Endpoint, new object[] { "test" });
+            transport.Send(transport.Endpoint, new object[] { "test" }, RhinoMessagePriority.Normal);
 
             wait.WaitOne(TimeSpan.FromSeconds(5));
 
@@ -89,7 +89,7 @@ namespace Rhino.ServiceBus.Tests.RhinoQueues
             {
                 count++;
             };
-            transport.Send(transport.Endpoint, new object[] { "test" });
+            transport.Send(transport.Endpoint, new object[] { "test" }, RhinoMessagePriority.Normal);
 
             wait.WaitOne(TimeSpan.FromSeconds(5));
 

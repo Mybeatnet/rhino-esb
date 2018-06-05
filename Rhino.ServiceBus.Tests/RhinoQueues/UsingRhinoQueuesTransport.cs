@@ -57,7 +57,7 @@ namespace Rhino.ServiceBus.Tests.RhinoQueues
             
             using(var tx = new TransactionScope())
             {
-                transport.Send(transport.Endpoint, new object[] { "test" });
+                transport.Send(transport.Endpoint, new object[] { "test" }, RhinoMessagePriority.Normal);
                 tx.Complete();
             }
 
@@ -84,7 +84,7 @@ namespace Rhino.ServiceBus.Tests.RhinoQueues
 
             using (var tx = new TransactionScope())
             {
-                transport.Send(transport.Endpoint, new object[] { "test" });
+                transport.Send(transport.Endpoint, new object[] { "test" }, RhinoMessagePriority.Normal);
                 tx.Complete();
             }
 
@@ -102,7 +102,7 @@ namespace Rhino.ServiceBus.Tests.RhinoQueues
 
             using (var tx = new TransactionScope())
             {
-                transport.Send(transport.Endpoint, new object[] { "test" });
+                transport.Send(transport.Endpoint, new object[] {"test"}, RhinoMessagePriority.Normal);
                 tx.Complete();
             }
 
@@ -135,7 +135,7 @@ namespace Rhino.ServiceBus.Tests.RhinoQueues
             using (var tx = new TransactionScope())
             {
                 sendTime = DateTime.Now;
-                transport.Send(transport.Endpoint, sendTime.AddSeconds(3), new object[] { "test" });
+                transport.Send(transport.Endpoint, sendTime.AddSeconds(3), new object[] { "test" }, RhinoMessagePriority.Normal);
                 tx.Complete();
             }
 
@@ -159,8 +159,8 @@ namespace Rhino.ServiceBus.Tests.RhinoQueues
             DateTime sendTime = DateTime.Now.AddSeconds(2);
             using (var tx = new TransactionScope())
             {
-                transport.Send(transport.Endpoint, sendTime, new object[] { "test1" });
-                transport.Send(transport.Endpoint, sendTime, new object[] { "test2" });
+                transport.Send(transport.Endpoint, sendTime, new object[] { "test1" }, RhinoMessagePriority.Normal);
+                transport.Send(transport.Endpoint, sendTime, new object[] { "test2" }, RhinoMessagePriority.Normal);
                 tx.Complete();
             }
 

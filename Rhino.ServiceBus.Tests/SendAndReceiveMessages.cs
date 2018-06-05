@@ -27,7 +27,7 @@ namespace Rhino.ServiceBus.Tests
                     Name = "ayende",
                     SendAt = today
                 }
-            });
+            }, RhinoMessagePriority.Normal);
             waitHandle.WaitOne(TimeSpan.FromSeconds(30), false);
 
             Assert.NotNull(receivedMsg);
@@ -66,7 +66,7 @@ namespace Rhino.ServiceBus.Tests
                     Name = "ayende",
                     SendAt = today
                 }
-            });
+            }, RhinoMessagePriority.Normal);
             waitHandle.WaitOne(TimeSpan.FromSeconds(30), false);
 
             Assert.NotNull(receivedMsg);

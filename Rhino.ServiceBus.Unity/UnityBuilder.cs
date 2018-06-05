@@ -80,7 +80,8 @@ namespace Rhino.ServiceBus.Unity
                         new ResolvedParameter<IMessageModule[]>(),
                         new InjectionParameter<MessageOwner[]>(busConfig.MessageOwners.ToArray()),
                         new ResolvedParameter<IEndpointRouter>(),
-                        new ResolvedParameter<ISubscribeAction>()))
+                        new ResolvedParameter<ISubscribeAction>(),
+                        new ResolvedParameter<IPublishAction>()))
                 .RegisterType<IServiceBus, DefaultServiceBus>()
                 .RegisterType<IStartable, DefaultServiceBus>();
         }

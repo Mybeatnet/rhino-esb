@@ -18,7 +18,7 @@ namespace Rhino.ServiceBus.Tests
         {
             Transport.MessageArrived += ThrowOnFirstAction();
 
-            Transport.Send(TestQueueUri, new object[] { new object[] { DateTime.Today } });
+            Transport.Send(TestQueueUri, new object[] { new object[] { DateTime.Today } }, RhinoMessagePriority.Normal);
 
             gotFirstMessage.WaitOne(TimeSpan.FromSeconds(30), false);
 
@@ -30,7 +30,7 @@ namespace Rhino.ServiceBus.Tests
         {
             TransactionalTransport.MessageArrived += ThrowOnFirstAction();
 
-            TransactionalTransport.Send(TransactionalTestQueueUri, new object[] { DateTime.Today });
+            TransactionalTransport.Send(TransactionalTestQueueUri, new object[] { DateTime.Today }, RhinoMessagePriority.Normal);
 
             gotFirstMessage.WaitOne(TimeSpan.FromSeconds(30), false);
 
@@ -49,7 +49,7 @@ namespace Rhino.ServiceBus.Tests
                 throw new InvalidOperationException();
             };
 
-            Transport.Send(TestQueueUri, new object[] { DateTime.Today });
+            Transport.Send(TestQueueUri, new object[] { DateTime.Today }, RhinoMessagePriority.Normal);
 
             using (var errorQueue = new MessageQueue(testQueuePath + ";errors"))
             {
@@ -68,7 +68,7 @@ namespace Rhino.ServiceBus.Tests
                 throw new InvalidOperationException("Operation is not valid due to the current state of the object.");
             };
 
-            Transport.Send(TestQueueUri, new object[] { DateTime.Today });
+            Transport.Send(TestQueueUri, new object[] { DateTime.Today }, RhinoMessagePriority.Normal);
 
             using (var errorQueue = new MessageQueue(testQueuePath + ";errors"))
             {
@@ -101,7 +101,7 @@ namespace Rhino.ServiceBus.Tests
                 throw new InvalidOperationException();
             };
 
-            TransactionalTransport.Send(TransactionalTestQueueUri, new object[] { DateTime.Today });
+            TransactionalTransport.Send(TransactionalTestQueueUri, new object[] { DateTime.Today }, RhinoMessagePriority.Normal);
 
             using (var errorQueue = new MessageQueue(transactionalTestQueuePath + ";errors"))
             {
@@ -146,7 +146,7 @@ namespace Rhino.ServiceBus.Tests
             {
                 Transport.MessageArrived += ThrowOnFirstAction();
 
-                Transport.Send(testQueueEndPoint, new object[] { DateTime.Today });
+                Transport.Send(testQueueEndPoint, new object[] { DateTime.Today }, RhinoMessagePriority.Normal);
 
                 gotFirstMessage.WaitOne(TimeSpan.FromSeconds(30), false);
 
@@ -158,7 +158,7 @@ namespace Rhino.ServiceBus.Tests
             {
                 TransactionalTransport.MessageArrived += ThrowOnFirstAction();
 
-                TransactionalTransport.Send(transactionalTestQueueEndpoint, new object[] { DateTime.Today });
+                TransactionalTransport.Send(transactionalTestQueueEndpoint, new object[] { DateTime.Today }, RhinoMessagePriority.Normal);
 
                 gotFirstMessage.WaitOne(TimeSpan.FromSeconds(30), false);
 
@@ -177,7 +177,7 @@ namespace Rhino.ServiceBus.Tests
                     throw new InvalidOperationException();
                 };
 
-                Transport.Send(testQueueEndPoint, new object[] { DateTime.Today });
+                Transport.Send(testQueueEndPoint, new object[] { DateTime.Today }, RhinoMessagePriority.Normal);
 
                 using (var errorQueue = new MessageQueue(testQueuePath + "#errors"))
                 {
@@ -196,7 +196,7 @@ namespace Rhino.ServiceBus.Tests
                     throw new InvalidOperationException("Operation is not valid due to the current state of the object.");
                 };
 
-                Transport.Send(testQueueEndPoint, new object[] { DateTime.Today });
+                Transport.Send(testQueueEndPoint, new object[] { DateTime.Today }, RhinoMessagePriority.Normal);
 
                 using (var errorQueue = new MessageQueue(testQueuePath + "#errors"))
                 {
@@ -227,7 +227,7 @@ namespace Rhino.ServiceBus.Tests
                     throw new InvalidOperationException();
                 };
 
-                TransactionalTransport.Send(transactionalTestQueueEndpoint, new object[] { DateTime.Today });
+                TransactionalTransport.Send(transactionalTestQueueEndpoint, new object[] { DateTime.Today }, RhinoMessagePriority.Normal);
 
                 using (var errorQueue = new MessageQueue(transactionalTestQueuePath + "#errors"))
                 {

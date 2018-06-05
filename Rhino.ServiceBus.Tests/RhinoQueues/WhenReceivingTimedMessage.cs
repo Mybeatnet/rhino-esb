@@ -84,7 +84,7 @@ namespace Rhino.ServiceBus.Tests.RhinoQueues
         {
             using (var tx = new TransactionScope())
             {
-                transport.Send(transport.Endpoint, DateTime.Now.AddSeconds(3), new object[] { "test" });
+                transport.Send(transport.Endpoint, DateTime.Now.AddSeconds(3), new object[] { "test" }, RhinoMessagePriority.Normal);
                 tx.Complete();
             }
 

@@ -22,7 +22,7 @@ namespace Rhino.ServiceBus.RhinoQueues
 
         public void Send(params object[] msgs)
         {
-            base.Send(messageOwners.GetEndpointForMessageBatch(msgs), msgs);
+            base.Send(messageOwners.GetEndpointForMessageBatch(msgs), msgs, RhinoMessagePriority.Normal);
         }
 
        
