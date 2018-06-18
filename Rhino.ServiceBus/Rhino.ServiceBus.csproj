@@ -172,6 +172,7 @@
     <Compile Include="Hosting\DefaultHost.cs" />
     <Compile Include="Hosting\RemoteAppDomainHost.cs" />
     <Compile Include="ICustomizeOutgoingMessages.cs" />
+    <Compile Include="Impl\AutomaticallySubscribeConsumers.cs" />
     <Compile Include="Impl\DefaultHandler.cs" />
     <Compile Include="Impl\DefaultPublishAction.cs" />
     <Compile Include="Impl\DefaultSubscribeAction.cs" />

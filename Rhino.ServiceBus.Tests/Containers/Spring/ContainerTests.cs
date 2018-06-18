@@ -124,7 +124,7 @@ namespace Rhino.ServiceBus.Tests.Containers.Spring
                 .UseSpring(container)
                 .Configure();
 
-            var allBusAware = container.GetAll<IServiceBusAware>().ToList();
+            var allBusAware = container.GetAll<IServiceBusAware>().OfType<QueueCreationModule>().ToList();
             Assert.NotEmpty(allBusAware);
             Assert.IsType<QueueCreationModule>(allBusAware.First());
         }

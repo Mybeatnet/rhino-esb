@@ -208,8 +208,6 @@ namespace Rhino.ServiceBus.Impl
             subscriptionStorage.Initialize();
 			transport.Start();
 
-            AutomaticallySubscribeConsumerMessages();
-
             foreach(var aware in serviceBusAware)
                 aware.BusStarted(this);
         }
@@ -325,21 +323,6 @@ namespace Rhino.ServiceBus.Impl
         public void DelaySend(DateTime time, params object[] msgs)
         {
             DelaySend(messageOwners.GetEndpointForMessageBatch(msgs), time, msgs);
-        }
-
-        private void AutomaticallySubscribeConsumerMessages()
-        {
-            var handlers = serviceLocator.GetAllHandlersFor(typeof(IMessageConsumer));
-            foreach (var handler in handlers)
-            {
-                var msgs = reflection.GetMessagesConsumed(handler.Implementation,
-                                                          type => type == typeof(OccasionalConsumerOf<>)
-														  || type == typeof(Consumer<>.SkipAutomaticSubscription));
-                foreach (var msg in msgs)
-                {
-                    Subscribe(msg);
-                }
-            }
         }
 
         public bool Transport_OnMessageArrived(CurrentMessageInformation msg)

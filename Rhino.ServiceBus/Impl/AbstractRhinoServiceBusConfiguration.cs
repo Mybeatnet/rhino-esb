@@ -50,6 +50,8 @@ namespace Rhino.ServiceBus.Impl
 
         public bool DisableAutoQueueCreation { get; set; }
 
+        public bool DisableAutoSubscribeConsumers { get; set; }
+
         public TransactionalOptions Transactional { get; set; }
 
         public BusConfigurationSection ConfigurationSection
@@ -144,6 +146,12 @@ namespace Rhino.ServiceBus.Impl
         public AbstractRhinoServiceBusConfiguration DisableQueueAutoCreation()
         {
             DisableAutoQueueCreation = true;
+            return this;
+        }
+
+        public AbstractRhinoServiceBusConfiguration DisableConsumerAutoSubscribe()
+        {
+            DisableAutoSubscribeConsumers = true;
             return this;
         }
 

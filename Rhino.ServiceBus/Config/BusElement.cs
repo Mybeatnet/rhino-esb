@@ -44,6 +44,11 @@ namespace Rhino.ServiceBus.Config
             get { return (bool?) this["useDtc"]; }
         }
 
+        public bool? AutoSubscribe
+        {
+            get { return (bool?) this["autoSubscribe"]; }
+        }
+
         public string Transactional
         {
             get { return this["transactional"] as string; }
@@ -114,6 +119,7 @@ namespace Rhino.ServiceBus.Config
             Properties.Add(new ConfigurationProperty("queueIsolationLevel", typeof(string), null));
             Properties.Add(new ConfigurationProperty("consumeInTransaction", typeof(bool?), null));
             Properties.Add(new ConfigurationProperty("useDtc", typeof(bool?), null));
+            Properties.Add(new ConfigurationProperty("autoSubscribe", typeof(bool?), null));
             Properties.Add(new ConfigurationProperty("logEndpoint", typeof(string), null));
             Properties.Add(new ConfigurationProperty("loadBalancerEndpoint", typeof(string), null));
             Properties.Add(new ConfigurationProperty("name", typeof(string), null));

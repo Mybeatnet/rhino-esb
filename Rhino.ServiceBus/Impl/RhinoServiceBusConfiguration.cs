@@ -45,6 +45,9 @@ namespace Rhino.ServiceBus.Impl
             if (busConfig.UseDtc.HasValue)
                 UseDtc = busConfig.UseDtc.Value;
 
+            if (busConfig.AutoSubscribe.HasValue)
+                DisableAutoSubscribeConsumers = !busConfig.AutoSubscribe.Value;
+
             var uriString = busConfig.Endpoint;
             Uri endpoint;
             if (!Uri.TryCreate(uriString, UriKind.Absolute, out endpoint))
