@@ -406,23 +406,31 @@ namespace Rhino.ServiceBus.LoadBalancer
 			readyForWork.Enqueue(work.Endpoint);
 		}
 
-		private void SendReadyForWorkQueueUri(MessageQueue responseQueue)
-		{
-			if (responseQueue == null)
-				return;
-			try
-			{				
-				var newEndpoint = ReadyForWorkListener != null ? ReadyForWorkListener.Endpoint.Uri : Endpoint.Uri;
-				var message = new ReadyForWorkQueueUri {Endpoint = newEndpoint};
-				responseQueue.TransactionalSend(GenerateMsmqMessageFromMessageBatch(message));
-			}
-			catch (Exception e)
-			{
-				logger.Error("Failed to send known ready for work queue uri", e);
-			}
-		}
+	    private void SendReadyForWorkQueueUri(MessageQueue responseQueue)
+	    {
+	        if (responseQueue == null)
+	            return;
+	        try
+	        {
+	            var newEndpoint = ReadyForWorkListener != null ? ReadyForWorkListener.Endpoint.Uri : Endpoint.Uri;
+	            var message = new ReadyForWorkQueueUri {Endpoint = newEndpoint};
+	            SendTo(responseQueue, GenerateMsmqMessageFromMessageBatch(message));
+	        }
+	        catch (Exception e)
+	        {
+	            logger.Error("Failed to send known ready for work queue uri", e);
+	        }
+	    }
 
-		private void SendKnownWorkersAndKnownEndpoints(MessageQueue responseQueue)
+	    private void SendTo(MessageQueue responseQueue, Message msmgMessage)
+	    {
+	        if (Endpoint.Transactional.GetValueOrDefault())
+	            responseQueue.TransactionalSend(msmgMessage);
+	        else
+	            responseQueue.Send(msmgMessage, MessageQueueTransactionType.None);
+	    }
+
+	    private void SendKnownWorkersAndKnownEndpoints(MessageQueue responseQueue)
 		{
 			if (responseQueue == null)
 				return;
@@ -440,7 +448,7 @@ namespace Rhino.ServiceBus.LoadBalancer
 						.Select(x => new NewEndpointPersisted { PersistedEndpoint = x })
 						.ToArray();
 					index += endpointsBatch.Length;
-                    responseQueue.TransactionalSend(GenerateMsmqMessageFromMessageBatch(endpointsBatch));
+                    SendTo(responseQueue, GenerateMsmqMessageFromMessageBatch(endpointsBatch));
 				}
 
 				index = 0;
@@ -452,7 +460,7 @@ namespace Rhino.ServiceBus.LoadBalancer
 						.Select(x => new NewWorkerPersisted { Endpoint = x })
 						.ToArray();
 					index += workersBatch.Length;
-					responseQueue.TransactionalSend(GenerateMsmqMessageFromMessageBatch(workersBatch));
+				    SendTo(responseQueue, GenerateMsmqMessageFromMessageBatch(workersBatch));
 				}
 			}
 			catch (Exception e)
