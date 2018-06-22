@@ -95,9 +95,12 @@ namespace Rhino.ServiceBus.Config
 
             b.RegisterAll<IMsmqTransportAction>(typeof(ErrorAction));
 
-            b.RegisterSingleton<ISubscribeAction>(() => new DefaultSubscribeAction());
+            b.RegisterSingleton<ISubscribeAction>(() => new DefaultSubscribeAction(
+                l.Resolve<IEndpointRouter>(),
+                l.Resolve<MessageOwnersSelector>()));
 
-            b.RegisterSingleton<IPublishAction>(() => new DefaultPublishAction(l.Resolve<ITransport>(),
+            b.RegisterSingleton<IPublishAction>(() => new DefaultPublishAction(
+                l.Resolve<ITransport>(),
                 l.Resolve<ISubscriptionStorage>(),
                 l.Resolve<IEndpointRouter>()));
         }

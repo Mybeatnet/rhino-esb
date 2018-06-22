@@ -1,6 +1,7 @@
 using System;
 using Common.Logging;
 using Rhino.ServiceBus.Exceptions;
+using Rhino.ServiceBus.Impl;
 using Rhino.ServiceBus.Internal;
 
 namespace Rhino.ServiceBus.RabbitMQ
@@ -44,6 +45,14 @@ namespace Rhino.ServiceBus.RabbitMQ
         public void Init(IServiceBus bus)
         {
             _busUri = RabbitMQAddress.From(bus.Endpoint.Uri);
+        }
+
+        public void SubscribeInstanceSubscription(InstanceSubscriptionInformation information)
+        {
+        }
+
+        public void UnsubscribeInstanceSubscription(InstanceSubscriptionInformation information)
+        {
         }
     }
 }

@@ -45,7 +45,8 @@ namespace Rhino.ServiceBus.RabbitMQ
                     l.Resolve<IMessageSerializer>(),
                     l.Resolve<IServiceLocator>()));
 
-            b.RegisterSingleton<ISubscriptionStorage>(() => new RabbitMQSubscriptionStorage(c.MessageOwners));
+            b.RegisterSingleton<ISubscriptionStorage>(
+                () => new RabbitMQSubscriptionStorage(c.MessageOwners, l.Resolve<IReflection>()));
 
             b.RegisterSingleton<ITransport>(() => new RabbitMQTransport(
                 l.Resolve<IMessageSerializer>(),

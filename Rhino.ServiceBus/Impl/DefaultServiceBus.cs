@@ -34,7 +34,7 @@ namespace Rhino.ServiceBus.Impl
             ISubscriptionStorage subscriptionStorage,
             IReflection reflection,
             IMessageModule[] modules,
-            MessageOwner[] messageOwners, 
+            MessageOwnersSelector messageOwners, 
             IEndpointRouter endpointRouter, 
             ISubscribeAction subscribeAction,
             IPublishAction publishAction)
@@ -43,7 +43,7 @@ namespace Rhino.ServiceBus.Impl
             this.endpointRouter = endpointRouter;
             this.subscribeAction = subscribeAction;
             this.publishAction = publishAction;
-            this.messageOwners = new MessageOwnersSelector(messageOwners, endpointRouter);
+            this.messageOwners = messageOwners;
             this.subscriptionStorage = subscriptionStorage;
             this.reflection = reflection;
             this.modules = modules;
@@ -134,12 +134,12 @@ namespace Rhino.ServiceBus.Impl
                 ConsumedMessages = reflection.GetMessagesConsumed(consumer),
             };
             subscriptionStorage.AddLocalInstanceSubscription(consumer);
-            SubscribeInstanceSubscription(information);
+            subscribeAction.SubscribeInstanceSubscription(information);
             
             return new DisposableAction(() =>
             {
                 subscriptionStorage.RemoveLocalInstanceSubscription(information.Consumer);
-                UnsubscribeInstanceSubscription(information);
+                subscribeAction.UnsubscribeInstanceSubscription(information);
                 information.Dispose();
             });
         }
@@ -256,51 +256,6 @@ namespace Rhino.ServiceBus.Impl
             	var endpoint = endpointRouter.GetRoutedEndpoint(owner.Endpoint);
             	endpoint.Transactional = owner.Transactional;
                 subscribeAction.Unsubscribe(type, endpoint);
-            }
-        }
-
-        private void SubscribeInstanceSubscription(InstanceSubscriptionInformation information)
-        {
-            foreach (var message in information.ConsumedMessages)
-            {
-                bool subscribed = false;
-                foreach (var owner in messageOwners.Of(message))
-                {
-                    logger.DebugFormat("Instance subscribition for {0} on {1}",
-                        message.FullName,
-                        owner.Endpoint);
-
-                    subscribed = true;
-                	var endpoint = endpointRouter.GetRoutedEndpoint(owner.Endpoint);
-                	endpoint.Transactional = owner.Transactional;
-                	Send(endpoint, new AddInstanceSubscription
-                    {
-                        Endpoint = Endpoint.Uri.ToString(),
-                        Type = message.FullName,
-                        InstanceSubscriptionKey = information.InstanceSubscriptionKey
-                    });
-                }
-                if(subscribed ==false)
-                    throw new SubscriptionException("Could not find any owner for message " + message +
-                                                    " that we could subscribe for");
-            }
-        }
-
-        public void UnsubscribeInstanceSubscription(InstanceSubscriptionInformation information)
-        {
-            foreach (var message in information.ConsumedMessages)
-            {
-                foreach (var owner in messageOwners.Of(message))
-                {
-                	var endpoint = endpointRouter.GetRoutedEndpoint(owner.Endpoint);
-                	endpoint.Transactional = owner.Transactional;
-                	Send(endpoint, new RemoveInstanceSubscription
-                    {
-                        Endpoint = Endpoint.Uri.ToString(),
-                        Type = message.FullName,
-                        InstanceSubscriptionKey = information.InstanceSubscriptionKey
-                    });
-                }
             }
         }
 

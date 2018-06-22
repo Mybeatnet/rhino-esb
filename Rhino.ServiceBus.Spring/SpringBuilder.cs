@@ -58,7 +58,11 @@ namespace Rhino.ServiceBus.Spring
 
         public void RegisterBus()
         {
-            var busConfig = (RhinoServiceBusConfiguration)config;
+            var busConfig = (RhinoServiceBusConfiguration) config;
+
+            applicationContext.RegisterSingleton(() =>
+                new MessageOwnersSelector(busConfig.MessageOwners.ToArray(),
+                    applicationContext.Get<IEndpointRouter>()));
 
             applicationContext.RegisterSingleton<IStartableServiceBus>(() =>
                 new DefaultServiceBus(applicationContext.Get<IServiceLocator>(),
@@ -66,12 +70,15 @@ namespace Rhino.ServiceBus.Spring
                     applicationContext.Get<ISubscriptionStorage>(),
                     applicationContext.Get<IReflection>(),
                     applicationContext.GetAll<IMessageModule>().ToArray(),
-                    busConfig.MessageOwners.ToArray(),
+                    applicationContext.Get<MessageOwnersSelector>(),
                     applicationContext.Get<IEndpointRouter>(),
                     applicationContext.Get<ISubscribeAction>(),
                     applicationContext.Get<IPublishAction>()));
 
-            applicationContext.RegisterSingleton(() => new CreateQueuesAction(applicationContext.Get<IQueueStrategy>(), applicationContext.Get<IServiceBus>()));
+            applicationContext.RegisterSingleton(() =>
+                new CreateQueuesAction(
+                    applicationContext.Get<IQueueStrategy>(),
+                    applicationContext.Get<IServiceBus>()));
         }
 
         public void RegisterPrimaryLoadBalancer()

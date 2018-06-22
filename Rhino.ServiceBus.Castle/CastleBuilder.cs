@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Messaging;
 using Castle.Core;
 using Castle.Core.Configuration;
 using Castle.MicroKernel.Registration;
@@ -15,9 +14,6 @@ using Rhino.ServiceBus.Impl;
 using Rhino.ServiceBus.Internal;
 using Rhino.ServiceBus.LoadBalancer;
 using Rhino.ServiceBus.MessageModules;
-using Rhino.ServiceBus.Msmq;
-using Rhino.ServiceBus.Msmq.TransportActions;
-using ErrorAction = Rhino.ServiceBus.Msmq.TransportActions.ErrorAction;
 using IStartable = Rhino.ServiceBus.Internal.IStartable;
 using LoadBalancerConfiguration = Rhino.ServiceBus.LoadBalancer.LoadBalancerConfiguration;
 using System.Reflection;
@@ -85,21 +81,23 @@ namespace Rhino.ServiceBus.Castle
 
         public void RegisterBus()
         {
-            var busConfig = (RhinoServiceBusConfiguration)config;
+            var busConfig = (RhinoServiceBusConfiguration) config;
 
             container.Register(
                 Component.For<IDeploymentAction>()
                     .ImplementedBy<CreateLogQueueAction>(),
                 Component.For<IDeploymentAction>()
                     .ImplementedBy<CreateQueuesAction>(),
-                Component.For<IServiceBus, IStartableServiceBus, IStartable>()
-                    .ImplementedBy<DefaultServiceBus>()
-                    .LifeStyle.Is(LifestyleType.Singleton)
+                Component.For<MessageOwnersSelector>()
                     .DependsOn(new
                     {
                         messageOwners = busConfig.MessageOwners.ToArray(),
-                    })
-                    .DependsOn(Dependency.OnConfigValue("modules", CreateModuleConfigurationNode(busConfig.MessageModules))));
+                    }),
+                Component.For<IServiceBus, IStartableServiceBus, IStartable>()
+                    .ImplementedBy<DefaultServiceBus>()
+                    .LifeStyle.Is(LifestyleType.Singleton)
+                    .DependsOn(Dependency.OnConfigValue("modules",
+                        CreateModuleConfigurationNode(busConfig.MessageModules))));
         }
 
         private static IConfiguration CreateModuleConfigurationNode(IEnumerable<Type> messageModules)

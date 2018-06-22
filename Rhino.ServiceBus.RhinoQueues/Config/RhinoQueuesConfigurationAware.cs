@@ -59,7 +59,10 @@ namespace Rhino.ServiceBus.Config
 
             b.RegisterSingleton<QueueManagerConfiguration>(() => queueManagerConfiguration);
 
-            b.RegisterSingleton<ISubscribeAction>(() => new DefaultSubscribeAction());
+            b.RegisterSingleton<ISubscribeAction>(
+                () => new DefaultSubscribeAction(
+                    l.Resolve<IEndpointRouter>(),
+                    l.Resolve<MessageOwnersSelector>()));
 
             b.RegisterSingleton<IPublishAction>(() => new DefaultPublishAction(
                 l.Resolve<ITransport>(),
