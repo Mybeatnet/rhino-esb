@@ -30,7 +30,7 @@ namespace Rhino.ServiceBus
         public static void RegisterConsumersFrom(this IWindsorContainer container, Assembly assembly, Action<ComponentRegistration> configureConsumer, Func<Type, bool> isTypeAcceptable)
         {
             container.Register(
-                 AllTypes
+                 Classes
                     .FromAssembly(assembly)
                     .Where(type =>
                         typeof(IMessageConsumer).IsAssignableFrom(type) &&
