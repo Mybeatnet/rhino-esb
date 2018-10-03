@@ -224,7 +224,7 @@ namespace Rhino.ServiceBus.RabbitMQ
                 finally
                 {
                     Action sendMessageBackToQueue = null;
-                    if (rabbitMsg != null && Endpoint.Transactional == false)
+                    if (Endpoint.Transactional == false)
                         sendMessageBackToQueue = () => SendMessageToQueue(rabbitMsg, Endpoint, null);
                     var messageHandlingCompletion = new MessageHandlingCompletion(tx, sendMessageBackToQueue, exception,
                         messageCompleted, beforeTransactionCommit, beforeTransactionRollback, _logger,

@@ -34,13 +34,6 @@ namespace Rhino.ServiceBus.RabbitMQ
             if (RabbitMQTransaction.Current == null) return model;
 
             RabbitMQTransaction.Current.Add(model);
-            RabbitMQTransaction.Current.Enlist(commit =>
-            {
-                if (commit)
-                    model.TxCommit();
-                else
-                    model.TxRollback();
-            });
             model.TxSelect();
             return new ModelWrapper(model);
         }

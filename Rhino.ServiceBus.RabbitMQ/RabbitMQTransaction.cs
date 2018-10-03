@@ -28,9 +28,16 @@ namespace Rhino.ServiceBus.RabbitMQ
                 _completions = null;
             }
 
-            _current = null;            
+            _current = null;
             foreach (var model in _models)
+            {
+                if (_commit)
+                    model.TxCommit();
+                else
+                    model.TxRollback();
+
                 model.Dispose();
+            }
         }
 
         public void Complete()
