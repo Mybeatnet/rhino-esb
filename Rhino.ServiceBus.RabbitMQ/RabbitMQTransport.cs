@@ -139,6 +139,7 @@ namespace Rhino.ServiceBus.RabbitMQ
             Task.WaitAll(_consumers.Select(x => Task.Run((Action) x.Stop)).ToArray(), 5000);
             foreach (var cons in _consumers)
                 cons.Stop();
+            _connectionProvider.Dispose();
         }
 
         private void ReceiveMessage(IModel model, BasicDeliverEventArgs arg)

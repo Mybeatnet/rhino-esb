@@ -49,9 +49,14 @@ namespace Rhino.ServiceBus.RabbitMQ
                 {
                     Interlocked.Increment(ref _busy);
 
-                    _callback(_model, e);
-
-                    Interlocked.Decrement(ref _busy);
+                    try
+                    {
+                        _callback(_model, e);
+                    }
+                    finally
+                    {
+                        Interlocked.Decrement(ref _busy);
+                    }
                 };
                 _model.BasicConsume(address.QueueName, false, consumer);
             }

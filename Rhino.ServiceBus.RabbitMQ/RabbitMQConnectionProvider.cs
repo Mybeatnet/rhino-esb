@@ -7,14 +7,17 @@ using RabbitMQ.Client;
 namespace Rhino.ServiceBus.RabbitMQ
 {
     [CLSCompliant(false)]
-    public class RabbitMQConnectionProvider
+    public class RabbitMQConnectionProvider : IDisposable
     {
         private static readonly ConcurrentDictionary<string, ConnectionFactory> _connectionFactories
             = new ConcurrentDictionary<string, ConnectionFactory>();
 
         private static readonly ConcurrentDictionary<string, IConnection> _connections
-            = new ConcurrentDictionary<string, IConnection>();        
-
+            = new ConcurrentDictionary<string, IConnection>();
+        
+        [ThreadStatic]
+        private static IDictionary<string, IModel> _models;
+        
         private readonly ILog _log = LogManager.GetLogger<RabbitMQConnectionProvider>();
 
         public IModel Open(RabbitMQAddress brokerAddress, bool transactional)
@@ -30,11 +33,20 @@ namespace Rhino.ServiceBus.RabbitMQ
 
         private IModel OpenTransactional(RabbitMQAddress brokerAddress)
         {
-            var model = OpenNew(brokerAddress);
+            var key = GetKey(brokerAddress);
+            IModel model;
+            if (_models != null && _models.TryGetValue(key, out model))
+                return model;
+
+            model = OpenNew(brokerAddress);
             if (RabbitMQTransaction.Current == null) return model;
 
             RabbitMQTransaction.Current.Add(model);
             model.TxSelect();
+            RabbitMQTransaction.Current.Enlist(x => _models = null);
+            if (_models == null)
+                _models = new Dictionary<string, IModel>();
+            _models[key] = model;
             return new ModelWrapper(model);
         }
 
@@ -47,52 +59,63 @@ namespace Rhino.ServiceBus.RabbitMQ
             return model;
         }
 
+        private string GetKey(RabbitMQAddress addr)
+        {
+            var protocol = GetProtocol();
+            var broker = addr.Broker == Environment.MachineName.ToLower()
+                ? "localhost"
+                : addr.Broker;
+
+            return
+                $"{protocol}:{broker}:{addr.VirtualHost}:{addr.Username}:{addr.Password}";
+        }
+
         private ConnectionFactory GetConnectionFactory(IProtocol protocol, RabbitMQAddress brokerAddress)
         {
-            ConnectionFactory factory = null;
-            var key = $"{protocol}:{brokerAddress}";
+            var key = GetKey(brokerAddress);
 
-            if (!_connectionFactories.TryGetValue(key, out factory))
+            var broker = brokerAddress.Broker == Environment.MachineName.ToLower()
+                ? "localhost"
+                : brokerAddress.Broker;
+
+            var factory = _connectionFactories.GetOrAdd(key, s =>
             {
-                factory = new ConnectionFactory();
-                var broker = brokerAddress.Broker == Environment.MachineName.ToLower()
-                    ? "localhost"
-                    : brokerAddress.Broker;
-                factory.Endpoint = new AmqpTcpEndpoint(broker);
+                var f = new ConnectionFactory {Endpoint = new AmqpTcpEndpoint(broker)};
 
                 if (!string.IsNullOrEmpty(brokerAddress.VirtualHost))
-                    factory.VirtualHost = brokerAddress.VirtualHost;
+                    f.VirtualHost = brokerAddress.VirtualHost;
 
                 if (!string.IsNullOrEmpty(brokerAddress.Username))
-                    factory.UserName = brokerAddress.Username;
+                    f.UserName = brokerAddress.Username;
 
                 if (!string.IsNullOrEmpty(brokerAddress.Password))
-                    factory.Password = brokerAddress.Password;
+                    f.Password = brokerAddress.Password;
 
-                factory = _connectionFactories.GetOrAdd(key, factory);
                 _log.Debug("Opening new Connection Factory " + brokerAddress + " using " + protocol.ApiName);
-            }
+                return f;
+            });
 
             return factory;
         }
 
         private IConnection GetConnection(IProtocol protocol, RabbitMQAddress brokerAddress, ConnectionFactory factory)
         {
-            IConnection connection = null;
-            var key = $"{protocol}:{brokerAddress}";
+            var broker = brokerAddress.Broker == Environment.MachineName.ToLower()
+                ? "localhost"
+                : brokerAddress.Broker;
 
-            if (!_connections.TryGetValue(key, out connection))
+            var key =
+                $"{protocol}:{broker}:{brokerAddress.VirtualHost}:{brokerAddress.Username}:{brokerAddress.Password}";
+
+            var connection = _connections.GetOrAdd(key, s => factory.CreateConnection());
+            if (!connection.IsOpen)
             {
-                var newConnection = factory.CreateConnection();
-                connection = _connections.GetOrAdd(key, newConnection);
-
-                //if someone else beat us from another thread kill the connection just created
-                if (newConnection.Equals(connection) == false)
-                    newConnection.Dispose();
-                else
-                    _log.DebugFormat("Opening new Connection {0} on {1} using {2}",
-                        connection, brokerAddress, protocol.ApiName);
+                connection = factory.CreateConnection();
+                _connections[key] = connection;
             }
+
+            _log.DebugFormat("Opening new Connection {0} on {1} using {2}",
+                connection, brokerAddress, protocol.ApiName);
 
             return connection;
         }
@@ -185,6 +208,15 @@ namespace Rhino.ServiceBus.RabbitMQ
             {
                 channel.QueuePurge(addr.QueueName);
             }
+        }
+
+        public void Dispose()
+        {
+            foreach (var con in _connections.Values)
+                con.Dispose();
+            
+            _connections.Clear();
+            _connectionFactories.Clear();                
         }
     }
 }
