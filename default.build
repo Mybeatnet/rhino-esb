@@ -27,6 +27,7 @@
 			<do>				
 				<property name="project-name" value="${path::get-file-name-without-extension(nugfile)}"/>
 				<property name="project-path" value="${project-name}\${project-name}.csproj"/>
+				<echo message="processing file ${nugfile} - project-path is ${project-path}"/>
 				<exec program="${nuget.dir}\nuget.exe" workingdir="." if="${file::exists(project-path)}">
 					<arg value="pack"/>
 					<arg file="${project-path}"/>
@@ -39,10 +40,10 @@
 				</exec>	
 				<exec program="${nuget.dir}\nuget.exe" workingdir="." unless="${file::exists(project-path)}">
 					<arg value="pack"/>
-					<arg file="${project-path}"/>
+					<arg file="${nugfile}"/>
 					<arg line="-Version ${version}"/>					
 					<arg line="-OutputDirectory Build"/>
-					<arg line="-Symbols"/>
+					<arg line="-BasePath ."/>
 				</exec>	
 			</do>
 		</foreach>

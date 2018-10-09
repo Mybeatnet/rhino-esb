@@ -13,7 +13,7 @@
     <tags>persistence rhino esent</tags>
   </metadata>
   <files>
-    <file src="build\3.5\Esent.Interop.dll" target="lib" />
-    <file src="build\3.5\Esent.Interop.xml" target="lib" />
+    <file src="SharedLibs\Esent.Interop.dll" target="lib" />
+    <file src="SharedLibs\Esent.Interop.xml" target="lib" />
   </files>
 </package>
