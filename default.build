@@ -1,0 +1,51 @@
+<project name="Rhino.ServiceBus" xmlns="http://nant.sf.net/release/0.85/nant.xsd" default="package">
+
+	<property name="current.dir" value="${path::get-full-path('.')}"/>
+	<property name="nuget.dir" value="${current.dir}\Tools"/>
+
+	<target name="git.revision">
+		<exec program="git" output="git.revision">
+			<arg value="describe"/>
+			<arg value="--tags"/>
+			<arg value="--always"/>
+			<arg value="HEAD"/>
+		</exec>
+		<loadfile file="git.revision" property="git.revision"/>
+		<property name="version" value="${string::replace(git.revision, 'v', '')}"/>
+		<echo message="Version ${version}"/>
+	</target>
+		
+	<target name="package" depends="git.revision">			
+		<fileset id="nuspecfiles">
+			<exclude name="Build"/>
+			<include name="*/*.nuspec" />			
+		</fileset>
+		<foreach item="File" property="nugfile">
+			<in>
+				<items refid="nuspecfiles"/>
+			</in>
+			<do>				
+				<property name="project-name" value="${path::get-file-name-without-extension(nugfile)}"/>
+				<property name="project-path" value="${project-name}\${project-name}.csproj"/>
+				<exec program="${nuget.dir}\nuget.exe" workingdir="." if="${file::exists(project-path)}">
+					<arg value="pack"/>
+					<arg file="${project-path}"/>
+					<arg line="-Version ${version}"/>					
+					<arg line="-OutputDirectory Build"/>
+					<arg line="-Build"/>
+					<arg line="-Properties Configuration=Release;Platform=AnyCPU;"/>
+					<arg line="-IncludeReferencedProjects"/>
+					<arg line="-Symbols"/>
+				</exec>	
+				<exec program="${nuget.dir}\nuget.exe" workingdir="." unless="${file::exists(project-path)}">
+					<arg value="pack"/>
+					<arg file="${project-path}"/>
+					<arg line="-Version ${version}"/>					
+					<arg line="-OutputDirectory Build"/>
+					<arg line="-Symbols"/>
+				</exec>	
+			</do>
+		</foreach>
+	</target>
+
+</project>

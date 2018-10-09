@@ -16,3 +16,4 @@ push.cmd
 *.metaproj.tmp
 TestResults/
 /packages
+/git.revision
