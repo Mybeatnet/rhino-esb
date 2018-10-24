@@ -7,15 +7,16 @@
 		<exec program="git" output="git.revision">
 			<arg value="describe"/>
 			<arg value="--tags"/>
+			<arg value="--long"/>
 			<arg value="--always"/>
 			<arg value="HEAD"/>
 		</exec>
 		<loadfile file="git.revision" property="git.revision"/>
-		<property name="version" value="${string::replace(git.revision, 'v', '')}"/>
-		<echo message="Version ${version}"/>
+		<regex input="${git.revision}" pattern="^v(?'version'[0-9.]+)-\d+-(?'commit'[a-z0-9]+)"/>
+		<echo message="Version ${version}, commit ${commit}"/>
 	</target>
-		
-	<target name="package" depends="git.revision">			
+
+	<target name="package" depends="git.revision, assembly-info">			
 		<fileset id="nuspecfiles">
 			<exclude name="Build"/>
 			<include name="*/*.nuspec" />			
@@ -43,8 +44,41 @@
 					<arg file="${nugfile}"/>
 					<arg line="-Version ${version}"/>					
 					<arg line="-OutputDirectory Build"/>
-					<arg line="-BasePath ."/>
+					<arg line="-BasePath ."/>					
 				</exec>	
+			</do>
+		</foreach>
+	</target>
+
+	<target name="assembly-info" depends="git.revision">
+		<fileset id="projectFiles">
+			<exclude name="Build"/>
+			<include name="*/*.csproj" />			
+		</fileset>
+
+		<foreach item="File" property="projFile">
+			<in>
+				<items refid="projectFiles"/>
+			</in>
+			<do>
+				<property name="asmFile" value="${path::get-directory-name(projFile)}\Properties\AssemblyInfo.cs"/>
+				<asminfo output="${asmFile}" language="CSharp"> 
+					<imports>
+						<import namespace="System" />
+						<import namespace="System.Reflection" />
+						<import namespace="System.Runtime.InteropServices" />
+					</imports>
+					<attributes>
+						<attribute type="ComVisibleAttribute" value="false" />
+						<attribute type="CLSCompliantAttribute" value="true" />
+						<attribute type="AssemblyVersionAttribute" value="${version}.*" />
+						<attribute type="AssemblyCompanyAttribute" value="Hibernating Rhinos" />
+						<attribute type="AssemblyCopyrightAttribute" value="Hibernating Rhinos &amp; Ayende Rahien 2004 - 2009" />
+						<attribute type="AssemblyInformationalVersionAttribute" value="${version} / ${commit}" />
+						<attribute type="AssemblyFileVersionAttribute" value="${version}.0" />
+						<attribute type="AssemblyDelaySignAttribute" value="false" />						
+					</attributes>
+				</asminfo>
 			</do>
 		</foreach>
 	</target>

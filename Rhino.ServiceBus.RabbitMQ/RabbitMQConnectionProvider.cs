@@ -36,7 +36,7 @@ namespace Rhino.ServiceBus.RabbitMQ
             var key = GetKey(brokerAddress);
             IModel model;
             if (_models != null && _models.TryGetValue(key, out model))
-                return model;
+                return new ModelWrapper(model);
 
             model = OpenNew(brokerAddress);
             if (RabbitMQTransaction.Current == null) return model;
