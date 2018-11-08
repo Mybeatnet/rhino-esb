@@ -134,6 +134,13 @@ namespace Rhino.ServiceBus.RabbitMQ
                     .ToString();
         }
 
+        public RabbitMQAddress Clone()
+        {
+            return
+                new RabbitMQAddress(Broker, VirtualHost, Username, Password, Exchange, QueueName, RoutingKeys,
+                    RouteByType);
+        }
+
         public override string ToString()
         {
             Func<string, string, string, string> addParam =

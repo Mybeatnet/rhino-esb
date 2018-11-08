@@ -37,7 +37,7 @@ namespace Rhino.ServiceBus.RabbitMQ
                 throw new SubscriptionException(
                     $"Cannot subscribe to endpoint without an exchange for {type}: {endpoint}");
 
-            _connectionProvider.DeclareExchange(broker, broker.Exchange, "direct");
+            _connectionProvider.DeclareExchange(broker, broker.Exchange, "direct", true);
             _connectionProvider.BindQueue(broker, broker.Exchange, _busUri.QueueName, type.FullName);
             _logger.InfoFormat("Added subscription for {0} on {1}", type, endpoint);
         }

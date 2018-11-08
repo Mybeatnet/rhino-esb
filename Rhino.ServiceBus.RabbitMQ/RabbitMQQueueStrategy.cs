@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using Common.Logging;
 using Rhino.ServiceBus.Transport;
 
@@ -23,18 +24,31 @@ namespace Rhino.ServiceBus.RabbitMQ
             SubscriptionQueue = addr.ForSubQueue(SubQueue.Subscriptions).ToUri();
             ErrorQueue = addr.ForSubQueue(SubQueue.Errors).ToUri();
             DiscardedQueue = addr.ForSubQueue(SubQueue.Discarded).ToUri();
+
+            DelayedExchange = "delayed-exchange";
         }
 
         public Uri SubscriptionQueue { get; }
         public Uri ErrorQueue { get; }
         public Uri DiscardedQueue { get; }
+        public string DelayedExchange { get; }
 
         public void InitializeQueue()
         {
+            InitializeDelayedExchange();
             Initialize(_endpoint);
             Initialize(SubscriptionQueue);
             Initialize(ErrorQueue);
             Initialize(DiscardedQueue);
+        }
+
+        private void InitializeDelayedExchange()
+        {
+            var addr = RabbitMQAddress.From(_endpoint);
+            var args = new Dictionary<string, object>();
+            args["x-delayed-type"] = "direct";
+            _connectionProvider.DeclareExchange(addr, DelayedExchange, "x-delayed-message", true, false, args);
+            _connectionProvider.BindQueue(addr, DelayedExchange, addr.QueueName, addr.QueueName);
         }
 
         private void Initialize(Uri uri)

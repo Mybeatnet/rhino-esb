@@ -125,7 +125,8 @@ namespace Rhino.ServiceBus.RabbitMQ
             return Protocols.DefaultProtocol;
         }
 
-        public void DeclareExchange(RabbitMQAddress broker, string exchange, string exchangeType)
+        public void DeclareExchange(RabbitMQAddress broker, string exchange, string exchangeType,
+            bool durable = false, bool autoDelete = false, IDictionary<string, object> arguments = null)
         {
             if (string.IsNullOrEmpty(exchange))
             {
@@ -144,7 +145,7 @@ namespace Rhino.ServiceBus.RabbitMQ
                     exchangeType,
                     broker);
 
-                channel.ExchangeDeclare(exchange, exchangeType);
+                channel.ExchangeDeclare(exchange, exchangeType, durable, autoDelete, arguments);
             }
         }
 

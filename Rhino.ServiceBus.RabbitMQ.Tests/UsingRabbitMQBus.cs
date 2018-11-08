@@ -16,7 +16,7 @@ namespace Rhino.ServiceBus.RabbitMQ.Tests
         public UsingRabbitMQBus()
         {
             StringConsumer.Value = null;
-            StringConsumer.Wait = new ManualResetEvent(false);
+            StringConsumer.Wait = new AutoResetEvent(false);
 
             container = new WindsorContainer();
             new RhinoServiceBusConfiguration()
@@ -64,7 +64,7 @@ namespace Rhino.ServiceBus.RabbitMQ.Tests
         public class StringConsumer : ConsumerOf<string>
         {
             public static string Value;
-            public static ManualResetEvent Wait;
+            public static AutoResetEvent Wait;
 
             public void Consume(string message)
             {
@@ -132,6 +132,26 @@ namespace Rhino.ServiceBus.RabbitMQ.Tests
                 throw new TimeoutException("Did not receive message in 5 seconds");
             
             Assert.Equal("Test Publish", SubscribeToMeConsumer.Data);
+        }
+        
+        [Fact]
+        public void Can_send_delayed_message()
+        {
+            using (var tx = container.Resolve<ITransactionStrategy>().Begin())
+            {
+                bus.DelaySend(bus.Endpoint, DateTime.Now.AddSeconds(2.1), "delayed hello");
+
+                tx.Complete();
+            }
+
+            var timer = Stopwatch.StartNew();
+            var received = StringConsumer.Wait.WaitOne(TimeSpan.FromSeconds(10), false);
+            timer.Stop();
+            Assert.True(received, "Did not receive delayed message in 10 seconds");
+
+            Assert.Equal("delayed hello", StringConsumer.Value);
+
+            Assert.True(timer.ElapsedMilliseconds >= 2000, $"Received delayed message in less than 2 seconds ({timer.Elapsed.TotalSeconds:0.00} s)");
         }
     }
 

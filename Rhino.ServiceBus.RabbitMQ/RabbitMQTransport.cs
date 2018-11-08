@@ -19,8 +19,7 @@ namespace Rhino.ServiceBus.RabbitMQ
 
         [ThreadStatic] private static RabbitMQCurrentMessageInformation _currentMessageInformation;
 
-        private readonly RabbitMQConnectionProvider _connectionProvider;
-        private readonly RabbitMQAddress _inputAddress;
+        private readonly RabbitMQConnectionProvider _connectionProvider;        
         private readonly IMessageBuilder<RabbitMQMessage> _messageBuilder;
         private readonly RabbitMQQueueStrategy _queueStrategy;
         private readonly IMessageSerializer _serializer;
@@ -43,7 +42,6 @@ namespace Rhino.ServiceBus.RabbitMQ
             _txStrategy = txStrategy;
             _connectionProvider = connectionProvider;
             _queueStrategy = queueStrategy;
-            _inputAddress = RabbitMQAddress.From(endpoint);
             Endpoint = new Endpoint {Uri = endpoint, Transactional = consumeInTransaction};
             ThreadCount = threadCount;
 
@@ -85,7 +83,7 @@ namespace Rhino.ServiceBus.RabbitMQ
 
             var message = _messageBuilder.BuildFromMessageBatch(messageInformation);
 
-            SendMessageToQueue(message, destination, messageInformation);
+            SendMessageToQueue(message, destination.Uri, messageInformation);
 
             var copy = MessageSent;
             if (copy == null)
@@ -113,9 +111,17 @@ namespace Rhino.ServiceBus.RabbitMQ
                 Priority = priority
             };
             var message = _messageBuilder.BuildFromMessageBatch(messageInformation);
-            message.Headers["x-delay"] = (int) Math.Max(processAgainAt.Subtract(DateTime.Now).TotalMilliseconds, 0);
-
-            SendMessageToQueue(message, endpoint, messageInformation);
+            var delay = (int) Math.Max(processAgainAt.Subtract(DateTime.Now).TotalMilliseconds, 0);
+            if (delay > 100)
+            {
+                message.Headers["x-delay"] = delay;
+                var t = RabbitMQAddress.From(endpoint.Uri);
+                if (string.IsNullOrEmpty(t.Exchange))
+                    t.Exchange = _queueStrategy.DelayedExchange;
+                SendMessageToQueue(message, t.ToUri(), messageInformation);
+            }
+            else
+                SendMessageToQueue(message, endpoint.Uri, messageInformation);
         }
 
         public void Reply(params object[] messages)
@@ -226,7 +232,7 @@ namespace Rhino.ServiceBus.RabbitMQ
                 {
                     Action sendMessageBackToQueue = null;
                     if (Endpoint.Transactional == false)
-                        sendMessageBackToQueue = () => SendMessageToQueue(rabbitMsg, Endpoint, null);
+                        sendMessageBackToQueue = () => SendMessageToQueue(rabbitMsg, Endpoint.Uri, null);
                     var messageHandlingCompletion = new MessageHandlingCompletion(tx, sendMessageBackToQueue, exception,
                         messageCompleted, beforeTransactionCommit, beforeTransactionRollback, _logger,
                         MessageProcessingFailure, msgInfo);
@@ -252,27 +258,24 @@ namespace Rhino.ServiceBus.RabbitMQ
             return msgInfo;
         }
 
-        private void SendMessageToQueue(RabbitMQMessage message, Endpoint destination,
+        private void SendMessageToQueue(RabbitMQMessage message, Uri destination,
             OutgoingMessageInformation messageInformation)
         {
-            var addr = RabbitMQAddress.From(destination.Uri);
+            var addr = RabbitMQAddress.From(destination);
             using (var channel = _connectionProvider.Open(addr, true))
             {
                 var properties = channel.CreateBasicProperties();
                 message.Populate(properties);
 
-                if (!string.IsNullOrEmpty(addr.QueueName))
-                {
-                    channel.BasicPublish("", addr.QueueName, true, properties, message.Data);
-                }
-                else
-                {
-                    var routingKey = addr.RoutingKeys;
-                    if (string.IsNullOrEmpty(routingKey) && messageInformation != null)
-                        routingKey = messageInformation.Messages[0].GetType().FullName;
+                var routingKey = addr.QueueName;
 
-                    channel.BasicPublish(addr.Exchange, routingKey, true, properties, message.Data);
-                }
+                if (string.IsNullOrEmpty(routingKey))
+                    routingKey = addr.RoutingKeys;
+
+                if (string.IsNullOrEmpty(routingKey) && messageInformation != null)
+                    routingKey = messageInformation.Messages[0].GetType().FullName;
+
+                channel.BasicPublish(addr.Exchange ?? "", routingKey, true, properties, message.Data);
             }
         }
 
@@ -311,8 +314,7 @@ namespace Rhino.ServiceBus.RabbitMQ
 
         public void SendToErrorQueue(RabbitMQMessage msg)
         {
-            SendMessageToQueue(msg,
-                new Endpoint {Uri = _queueStrategy.ErrorQueue, Transactional = Endpoint.Transactional}, null);
+            SendMessageToQueue(msg, _queueStrategy.ErrorQueue, null);
         }
     }
 }
