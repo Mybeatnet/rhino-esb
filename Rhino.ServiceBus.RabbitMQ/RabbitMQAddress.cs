@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Specialized;
 using System.Linq;
+using System.Security.Authentication;
 using Common.Logging;
+using RabbitMQ.Client;
 using Rhino.ServiceBus.Transport;
 
 namespace Rhino.ServiceBus.RabbitMQ
@@ -9,17 +11,18 @@ namespace Rhino.ServiceBus.RabbitMQ
     [Serializable]
     public class RabbitMQAddress
     {
-        private const string VirtualHostKey = "virtualHost";
+        private static readonly ILog _log = LogManager.GetLogger<RabbitMQAddress>();
+
+        private const string VirtualHostKey = "vhost";
         private const string UsernameKey = "username";
         private const string PasswordKey = "password";
         private const string ExchangeKey = "exchange";
         private const string QueueKey = "queue";
         private const string RoutingKeysKey = "routingKey";
         private const string RouteByTypeKey = "routeByType";
-        private static readonly ILog _log = LogManager.GetLogger<RabbitMQAddress>();
 
         public RabbitMQAddress(string broker, string vhost, string username, string password, string exchange,
-            string queueName, string routingKeys, bool routeByType)
+            string queueName, string routingKeys, bool routeByType, SslOption ssl)
         {
             if (string.IsNullOrEmpty(exchange)
                 && (routeByType || (string.IsNullOrEmpty(routingKeys) == false)))
@@ -38,6 +41,7 @@ namespace Rhino.ServiceBus.RabbitMQ
             QueueName = queueName;
             RoutingKeys = routingKeys;
             RouteByType = routeByType;
+            Ssl = ssl;
 
             _log.DebugFormat("Broker: {0}, Exchange: {1}, QueueName: {2}, RoutingKeys: {3}, RouteByType: {4}",
                 broker, exchange, queueName, routingKeys, routeByType);
@@ -59,6 +63,8 @@ namespace Rhino.ServiceBus.RabbitMQ
 
         public bool RouteByType { get; }
 
+        public SslOption Ssl { get; set; }
+
         public static RabbitMQAddress FromString(string value)
         {
             var uri = new Uri(value);
@@ -71,7 +77,6 @@ namespace Rhino.ServiceBus.RabbitMQ
 
             if (uri.Port != -1)
                 broker += ":" + uri.Port;
-
             
             var query = new NameValueCollection();
 
@@ -95,9 +100,27 @@ namespace Rhino.ServiceBus.RabbitMQ
                         query.Add(key, val);
                     });
 
-            var queue = uri.LocalPath.Substring(1);
-            var exchange = uri.Fragment.StartsWith("#") ? uri.Fragment.Substring(1) : string.Empty;
+            var pathParts = uri.LocalPath.Split('/');
+            var queue = pathParts[1];
             var vhost = query[VirtualHostKey] ?? string.Empty;
+
+            if (pathParts.Length > 2)
+            {
+                queue = pathParts[2];
+                vhost = pathParts[1];
+            }
+            
+            var exchange = uri.Fragment.StartsWith("#") ? uri.Fragment.Substring(1) : string.Empty;
+
+            var ssl = new SslOption();
+            if (uri.Scheme == "amqps")
+            {
+                ssl.Enabled = true;
+                ssl.ServerName = uri.Host;
+                SslProtocols sslVersion = SslProtocols.Default;
+                if (!string.IsNullOrEmpty(query["ssl"]) && SslProtocols.TryParse(query["ssl"], out sslVersion))
+                    ssl.Version = sslVersion;
+            }
             
             var userInfo = uri.UserInfo.Split(new[] { ':'}, 2);
             var username = userInfo.Length > 0 ? userInfo[0] : string.Empty;
@@ -116,7 +139,8 @@ namespace Rhino.ServiceBus.RabbitMQ
                 throw new InvalidOperationException(message);
             }
 
-            return new RabbitMQAddress(broker, vhost, username, password, exchange, queue, routingKeys, routeByType);
+            return new RabbitMQAddress(broker, vhost, username, password, exchange, queue, routingKeys, routeByType,
+                ssl);
         }
 
         public string[] GetRoutingKeysAsArray()
@@ -130,7 +154,7 @@ namespace Rhino.ServiceBus.RabbitMQ
         public string ToString(string route)
         {
             return
-                new RabbitMQAddress(Broker, VirtualHost, Username, Password, Exchange, string.Empty, route, false)
+                new RabbitMQAddress(Broker, VirtualHost, Username, Password, Exchange, string.Empty, route, false, Ssl)
                     .ToString();
         }
 
@@ -138,7 +162,7 @@ namespace Rhino.ServiceBus.RabbitMQ
         {
             return
                 new RabbitMQAddress(Broker, VirtualHost, Username, Password, Exchange, QueueName, RoutingKeys,
-                    RouteByType);
+                    RouteByType, Ssl);
         }
 
         public override string ToString()
@@ -161,11 +185,12 @@ namespace Rhino.ServiceBus.RabbitMQ
                            + Uri.EscapeDataString(value);
                 };
 
-            var uri = $"rmq://{Broker}/{QueueName}?";
+            var scheme = Ssl.Enabled ? "amqps" : "amqp";
+            var uri = $"{scheme}://{Broker}/{QueueName}?";
 
             if (!string.IsNullOrEmpty(VirtualHost))
                 uri = addParam(uri, VirtualHostKey, VirtualHost);
-
+            
             if (!string.IsNullOrEmpty(Username))
                 uri = addParam(uri, UsernameKey, Username);
 
@@ -175,9 +200,11 @@ namespace Rhino.ServiceBus.RabbitMQ
             if (!string.IsNullOrEmpty(RoutingKeys))
                 uri = addParam(uri, RoutingKeysKey, RoutingKeys);
 
+            if (Ssl.Enabled && Ssl.Version != SslProtocols.Default)
+                uri = addParam(uri, "ssl", Ssl.Version.ToString());
+
             if (!string.IsNullOrEmpty(Exchange))
                 uri += "#" + Uri.EscapeDataString(Exchange);
-
 
             return uri;
         }
@@ -186,9 +213,12 @@ namespace Rhino.ServiceBus.RabbitMQ
         {
             if (ReferenceEquals(null, other)) return false;
             if (ReferenceEquals(this, other)) return true;
-            return Equals(other.Broker, Broker) && Equals(other.Exchange, Exchange) &&
-                   Equals(other.QueueName, QueueName) && Equals(other.RoutingKeys, RoutingKeys) &&
-                   other.RouteByType.Equals(RouteByType);
+            return Equals(other.Broker, Broker)
+                   && Equals(other.Exchange, Exchange)
+                   && Equals(other.QueueName, QueueName)
+                   && Equals(other.RoutingKeys, RoutingKeys)
+                   && other.RouteByType.Equals(RouteByType)
+                   && Ssl.Enabled == other.Ssl.Enabled;
         }
 
         public override bool Equals(object obj)
@@ -211,6 +241,7 @@ namespace Rhino.ServiceBus.RabbitMQ
                 result = (result*397) ^ (QueueName?.GetHashCode() ?? 0);
                 result = (result*397) ^ (RoutingKeys?.GetHashCode() ?? 0);
                 result = (result*397) ^ RouteByType.GetHashCode();
+                result = (result*397) ^ Ssl.Enabled.GetHashCode();
                 return result;
             }
         }
@@ -234,7 +265,20 @@ namespace Rhino.ServiceBus.RabbitMQ
         {
             return new RabbitMQAddress(Broker, VirtualHost, Username, Password, Exchange,
                 QueueName + "." + subQueue.ToString().ToLower(),
-                RoutingKeys, RouteByType);
+                RoutingKeys, RouteByType, Ssl);
+        }
+
+        public Uri GetBrokerUri()
+        {
+            var url = Ssl.Enabled ? "amqps://" : "amqp://";
+
+            var parts = Broker.Split(':');
+
+            url += parts[0] == Environment.MachineName.ToLower() ? "localhost" : parts[0];
+            if (parts.Length > 1)
+                url += ":" + parts[1];
+
+            return new Uri(url);
         }
     }
 }

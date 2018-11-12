@@ -96,6 +96,11 @@ namespace Rhino.ServiceBus.RabbitMQ
             _impl.ConfirmSelect();
         }
 
+        public IBasicPublishBatch CreateBasicPublishBatch()
+        {
+            return _impl.CreateBasicPublishBatch();
+        }
+
         public IBasicProperties CreateBasicProperties()
         {
             return _impl.CreateBasicProperties();

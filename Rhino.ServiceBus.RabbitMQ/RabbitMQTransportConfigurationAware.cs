@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using Rhino.ServiceBus.Config;
 using Rhino.ServiceBus.Impl;
 using Rhino.ServiceBus.Internal;
@@ -9,13 +10,15 @@ namespace Rhino.ServiceBus.RabbitMQ
 {
     public class RabbitMQTransportConfigurationAware : IBusConfigurationAware
     {
+        private readonly string[] schemes = {"amqp", "amqps"};
+
         public void Configure(AbstractRhinoServiceBusConfiguration config, IBusContainerBuilder builder,
             IServiceLocator locator)
         {
             if (!(config is RhinoServiceBusConfiguration) && !(config is LoadBalancerConfiguration))
                 return;
 
-            if (!config.Endpoint.Scheme.Equals("rmq", StringComparison.InvariantCultureIgnoreCase))
+            if (!schemes.Contains(config.Endpoint.Scheme.ToLower()))
                 return;
 
             if (!config.DisableAutoQueueCreation)

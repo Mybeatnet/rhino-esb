@@ -63,17 +63,18 @@ namespace Rhino.ServiceBus.RabbitMQ.Tests
 
         public class StringConsumer : ConsumerOf<string>
         {
+            public static DateTime Date;
             public static string Value;
             public static AutoResetEvent Wait;
 
             public void Consume(string message)
             {
                 Value = message;
+                Date = DateTime.Now;
                 Wait.Set();
             }
         }
-
-
+         
         public class ThrowingIntConsumer : ConsumerOf<int>
         {
             public void Consume(int message)
@@ -137,21 +138,22 @@ namespace Rhino.ServiceBus.RabbitMQ.Tests
         [Fact]
         public void Can_send_delayed_message()
         {
+            var sendTime = DateTime.Now.AddSeconds(2);
             using (var tx = container.Resolve<ITransactionStrategy>().Begin())
             {
-                bus.DelaySend(bus.Endpoint, DateTime.Now.AddSeconds(2.1), "delayed hello");
+                bus.DelaySend(bus.Endpoint, sendTime, "delayed hello");
 
                 tx.Complete();
             }
 
-            var timer = Stopwatch.StartNew();
             var received = StringConsumer.Wait.WaitOne(TimeSpan.FromSeconds(10), false);
-            timer.Stop();
+
             Assert.True(received, "Did not receive delayed message in 10 seconds");
 
             Assert.Equal("delayed hello", StringConsumer.Value);
 
-            Assert.True(timer.ElapsedMilliseconds >= 2000, $"Received delayed message in less than 2 seconds ({timer.Elapsed.TotalSeconds:0.00} s)");
+            Assert.True(StringConsumer.Date >= sendTime, 
+                $"Received delayed message {sendTime.Subtract(StringConsumer.Date).TotalSeconds} s before {sendTime}");
         }
     }
 

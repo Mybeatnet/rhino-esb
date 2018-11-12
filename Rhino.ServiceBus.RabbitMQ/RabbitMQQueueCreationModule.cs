@@ -1,6 +1,5 @@
 ﻿using System;
 using Rhino.ServiceBus.Exceptions;
-using Rhino.ServiceBus.Msmq;
 
 namespace Rhino.ServiceBus.RabbitMQ
 {
@@ -23,8 +22,7 @@ namespace Rhino.ServiceBus.RabbitMQ
             catch (Exception e)
             {
                 throw new TransportException(
-                    "Could not open queue: " + bus.Endpoint + Environment.NewLine +
-                    "Queue path: " + MsmqUtil.GetQueuePath(bus.Endpoint), e);
+                    "Could not open queue: " + bus.Endpoint, e);
             }
         }
 

@@ -72,19 +72,17 @@ namespace Rhino.ServiceBus.RabbitMQ
 
         private ConnectionFactory GetConnectionFactory(IProtocol protocol, RabbitMQAddress brokerAddress)
         {
-            var key = GetKey(brokerAddress);
+            var broker = brokerAddress.GetBrokerUri();
 
-            var broker = brokerAddress.Broker == Environment.MachineName.ToLower()
-                ? "localhost"
-                : brokerAddress.Broker;
+            var key = broker.ToString();
 
             var factory = _connectionFactories.GetOrAdd(key, s =>
             {
-                var f = new ConnectionFactory {Endpoint = new AmqpTcpEndpoint(broker)};
+                var f = new ConnectionFactory {Endpoint = new AmqpTcpEndpoint(broker, brokerAddress.Ssl)};
 
                 if (!string.IsNullOrEmpty(brokerAddress.VirtualHost))
                     f.VirtualHost = brokerAddress.VirtualHost;
-
+                
                 if (!string.IsNullOrEmpty(brokerAddress.Username))
                     f.UserName = brokerAddress.Username;
 
@@ -100,9 +98,7 @@ namespace Rhino.ServiceBus.RabbitMQ
 
         private IConnection GetConnection(IProtocol protocol, RabbitMQAddress brokerAddress, ConnectionFactory factory)
         {
-            var broker = brokerAddress.Broker == Environment.MachineName.ToLower()
-                ? "localhost"
-                : brokerAddress.Broker;
+            var broker = brokerAddress.GetBrokerUri();
 
             var key =
                 $"{protocol}:{broker}:{brokerAddress.VirtualHost}:{brokerAddress.Username}:{brokerAddress.Password}";
