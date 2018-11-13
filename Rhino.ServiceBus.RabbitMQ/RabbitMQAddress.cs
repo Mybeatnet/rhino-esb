@@ -11,13 +11,10 @@ namespace Rhino.ServiceBus.RabbitMQ
     [Serializable]
     public class RabbitMQAddress
     {
+        public const string Default = "default";
+
         private static readonly ILog _log = LogManager.GetLogger<RabbitMQAddress>();
 
-        private const string VirtualHostKey = "vhost";
-        private const string UsernameKey = "username";
-        private const string PasswordKey = "password";
-        private const string ExchangeKey = "exchange";
-        private const string QueueKey = "queue";
         private const string RoutingKeysKey = "routingKey";
         private const string RouteByTypeKey = "routeByType";
 
@@ -102,7 +99,7 @@ namespace Rhino.ServiceBus.RabbitMQ
 
             var pathParts = uri.LocalPath.Split('/');
             var queue = pathParts[1];
-            var vhost = query[VirtualHostKey] ?? string.Empty;
+            var vhost = string.Empty;
 
             if (pathParts.Length > 2)
             {
@@ -186,16 +183,7 @@ namespace Rhino.ServiceBus.RabbitMQ
                 };
 
             var scheme = Ssl.Enabled ? "amqps" : "amqp";
-            var uri = $"{scheme}://{Broker}/{QueueName}?";
-
-            if (!string.IsNullOrEmpty(VirtualHost))
-                uri = addParam(uri, VirtualHostKey, VirtualHost);
-            
-            if (!string.IsNullOrEmpty(Username))
-                uri = addParam(uri, UsernameKey, Username);
-
-            if (!string.IsNullOrEmpty(Password))
-                uri = addParam(uri, PasswordKey, Password);
+            var uri = $"{scheme}://{Broker}/{VirtualHost}/{QueueName}?";
 
             if (!string.IsNullOrEmpty(RoutingKeys))
                 uri = addParam(uri, RoutingKeysKey, RoutingKeys);

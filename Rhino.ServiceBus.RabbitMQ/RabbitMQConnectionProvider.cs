@@ -14,11 +14,26 @@ namespace Rhino.ServiceBus.RabbitMQ
 
         private static readonly ConcurrentDictionary<string, IConnection> _connections
             = new ConcurrentDictionary<string, IConnection>();
-        
-        [ThreadStatic]
-        private static IDictionary<string, IModel> _models;
-        
+
+        [ThreadStatic] private static IDictionary<string, IModel> _models;
+
+        private readonly RabbitMQConfiguration _config;
+
         private readonly ILog _log = LogManager.GetLogger<RabbitMQConnectionProvider>();
+
+        public RabbitMQConnectionProvider(RabbitMQConfiguration config)
+        {
+            _config = config;
+        }
+
+        public void Dispose()
+        {
+            foreach (var con in _connections.Values)
+                con.Dispose();
+
+            _connections.Clear();
+            _connectionFactories.Clear();
+        }
 
         public IModel Open(RabbitMQAddress brokerAddress, bool transactional)
         {
@@ -28,6 +43,7 @@ namespace Rhino.ServiceBus.RabbitMQ
                 //opened.Disposed += (sender, e) => log.Debug("Closing " + brokerAddress);
                 return opened;
             }
+
             return OpenTransactional(brokerAddress);
         }
 
@@ -78,16 +94,27 @@ namespace Rhino.ServiceBus.RabbitMQ
 
             var factory = _connectionFactories.GetOrAdd(key, s =>
             {
-                var f = new ConnectionFactory {Endpoint = new AmqpTcpEndpoint(broker, brokerAddress.Ssl)};
+                var f = new ConnectionFactory();
 
-                if (!string.IsNullOrEmpty(brokerAddress.VirtualHost))
-                    f.VirtualHost = brokerAddress.VirtualHost;
-                
-                if (!string.IsNullOrEmpty(brokerAddress.Username))
-                    f.UserName = brokerAddress.Username;
+                if (brokerAddress.Broker == RabbitMQAddress.Default)
+                {
+                    f.VirtualHost = _config.VirtualHost;
+                    f.UserName = _config.Username;
+                    f.Password = _config.Password;
+                }
+                else
+                {
+                    f.Endpoint = new AmqpTcpEndpoint(broker, brokerAddress.Ssl);
 
-                if (!string.IsNullOrEmpty(brokerAddress.Password))
-                    f.Password = brokerAddress.Password;
+                    if (!string.IsNullOrEmpty(brokerAddress.VirtualHost))
+                        f.VirtualHost = brokerAddress.VirtualHost;
+
+                    if (!string.IsNullOrEmpty(brokerAddress.Username))
+                        f.UserName = brokerAddress.Username;
+
+                    if (!string.IsNullOrEmpty(brokerAddress.Password))
+                        f.Password = brokerAddress.Password;
+                }
 
                 _log.Debug("Opening new Connection Factory " + brokerAddress + " using " + protocol.ApiName);
                 return f;
@@ -103,10 +130,16 @@ namespace Rhino.ServiceBus.RabbitMQ
             var key =
                 $"{protocol}:{broker}:{brokerAddress.VirtualHost}:{brokerAddress.Username}:{brokerAddress.Password}";
 
-            var connection = _connections.GetOrAdd(key, s => factory.CreateConnection());
+            var connection = _connections.GetOrAdd(key, s =>
+            {
+                if (brokerAddress.Broker == RabbitMQAddress.Default)
+                    return factory.CreateConnection(_config.Endpoints);
+                return factory.CreateConnection();
+            });
+
             if (!connection.IsOpen)
             {
-                connection = factory.CreateConnection();
+                connection = CreateNewConnection(factory, brokerAddress);
                 _connections[key] = connection;
             }
 
@@ -114,6 +147,13 @@ namespace Rhino.ServiceBus.RabbitMQ
                 connection, brokerAddress, protocol.ApiName);
 
             return connection;
+        }
+
+        private IConnection CreateNewConnection(ConnectionFactory connectionFactory, RabbitMQAddress brokerAddress)
+        {
+            if (brokerAddress.Broker == RabbitMQAddress.Default)
+                return connectionFactory.CreateConnection(_config.Endpoints);
+            return connectionFactory.CreateConnection();
         }
 
         private static IProtocol GetProtocol()
@@ -176,7 +216,7 @@ namespace Rhino.ServiceBus.RabbitMQ
                 foreach (var key in keys)
                 {
                     _log.InfoFormat("Binding Key {0} on Queue {1} on Exchange {2}", key, queue, exchange);
-                    channel.QueueBind(queue, exchange, key);                    
+                    channel.QueueBind(queue, exchange, key);
                 }
             }
         }
@@ -194,7 +234,7 @@ namespace Rhino.ServiceBus.RabbitMQ
                 foreach (var key in keys)
                 {
                     _log.InfoFormat("Binding Key {0} on Queue {1} on Exchange {2}", key, queue, exchange);
-                    channel.QueueUnbind(queue, exchange, key);                    
+                    channel.QueueUnbind(queue, exchange, key);
                 }
             }
         }
@@ -205,15 +245,6 @@ namespace Rhino.ServiceBus.RabbitMQ
             {
                 channel.QueuePurge(addr.QueueName);
             }
-        }
-
-        public void Dispose()
-        {
-            foreach (var con in _connections.Values)
-                con.Dispose();
-            
-            _connections.Clear();
-            _connectionFactories.Clear();                
         }
     }
 }

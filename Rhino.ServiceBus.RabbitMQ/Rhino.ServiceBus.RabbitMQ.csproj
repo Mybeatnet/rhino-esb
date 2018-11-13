@@ -50,6 +50,7 @@
       <HintPath>..\packages\RabbitMQ.Client.5.1.0\lib\net451\RabbitMQ.Client.dll</HintPath>
     </Reference>
     <Reference Include="System" />
+    <Reference Include="System.Configuration" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
@@ -60,6 +61,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AmqExtensions.cs" />
+    <Compile Include="RabbitMQConfiguration.cs" />
+    <Compile Include="RabbitMQConfigurationSection.cs" />
     <Compile Include="RabbitMQErrorAction.cs" />
     <Compile Include="ModelWrapper.cs" />
     <Compile Include="RabbitMQExtensions.cs" />

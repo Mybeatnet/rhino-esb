@@ -14,7 +14,7 @@ namespace Rhino.ServiceBus.RabbitMQ
 
         public static TConfig UseRabbitMQ<TConfig>(this TConfig self)
             where TConfig : AbstractRhinoServiceBusConfiguration
-        {
+        {                        
             self.AddAssemblyContaining<RabbitMQTransportConfigurationAware>();
             return self;
         }

@@ -35,8 +35,8 @@ namespace Rhino.ServiceBus.RabbitMQ
 
         public void InitializeQueue()
         {
-            InitializeDelayedExchange();
             Initialize(_endpoint);
+            InitializeDelayedExchange();
             Initialize(SubscriptionQueue);
             Initialize(ErrorQueue);
             Initialize(DiscardedQueue);
@@ -54,10 +54,8 @@ namespace Rhino.ServiceBus.RabbitMQ
         private void Initialize(Uri uri)
         {
             var addr = RabbitMQAddress.From(uri);
-
-            //_connectionProvider.DeclareExchange(addr, name, "topic");
+            
             _connectionProvider.DeclareQueue(addr, addr.QueueName, true);
-            //_connectionProvider.BindQueue(addr, name, name, routingKeys);
         }
 
         public void PurgeAll()

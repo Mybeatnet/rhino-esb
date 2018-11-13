@@ -20,8 +20,7 @@ namespace Rhino.ServiceBus.Impl
         private BusConfigurationSection configurationSection;
         private Action readConfiguration;
         private IBusContainerBuilder busContainerBuilder;
-        protected List<Assembly> scanAssemblies = new List<Assembly>(new[] { typeof(IServiceBus).Assembly });
-
+        protected List<Assembly> scanAssemblies = new List<Assembly>(new[] { typeof(IServiceBus).Assembly });        
 
         protected AbstractRhinoServiceBusConfiguration()
         {
@@ -130,6 +129,7 @@ namespace Rhino.ServiceBus.Impl
 
         public AbstractRhinoServiceBusConfiguration UseStandaloneConfigurationFile(string fileName)
         {
+            StandaloneConfigFile = fileName;
             readConfiguration = () =>
             {
                 configurationSection = ConfigurationManager.OpenMappedMachineConfiguration(new ConfigurationFileMap(fileName)).GetSection("rhino.esb") as BusConfigurationSection;
@@ -171,5 +171,7 @@ namespace Rhino.ServiceBus.Impl
         {
             return AddAssembly(typeof(T).Assembly);
         }
+
+        public string StandaloneConfigFile { get; set; }
     }
 }

@@ -10,8 +10,7 @@ namespace Rhino.ServiceBus.RabbitMQ
 {
     public class RabbitMQTransportConfigurationAware : IBusConfigurationAware
     {
-        private readonly string[] schemes = {"amqp", "amqps"};
-
+        private readonly string[] schemes = {"rmq", "amqp", "amqps"};
         public void Configure(AbstractRhinoServiceBusConfiguration config, IBusContainerBuilder builder,
             IServiceLocator locator)
         {
@@ -24,7 +23,14 @@ namespace Rhino.ServiceBus.RabbitMQ
             if (!config.DisableAutoQueueCreation)
                 RegisterQueueCreation(builder, locator);
 
-            RegisterRabbitMqTransport((RhinoServiceBusConfiguration) config, builder, locator);
+            if (!(config.ConfigurationSection is RabbitMQConfigurationSection))
+                throw new Exception(
+                    $"ConfigurationSection is not of type RabbitMQConfigurationSection. Check that the type for rhino.esb is {typeof(RabbitMQConfigurationSection).AssemblyQualifiedName} in the config file");
+
+            var rmqSection = (RabbitMQConfigurationSection) config.ConfigurationSection;
+
+            var rabbitMqConfig = RabbitMQConfiguration.From(rmqSection.RabbitMQ);
+            RegisterRabbitMqTransport(rabbitMqConfig, (RhinoServiceBusConfiguration) config, builder, locator);
         }
 
         private void RegisterQueueCreation(IBusContainerBuilder b, IServiceLocator l)
@@ -33,10 +39,11 @@ namespace Rhino.ServiceBus.RabbitMQ
                 () => new RabbitMQQueueCreationModule(l.Resolve<RabbitMQQueueStrategy>()));
         }
 
-        private void RegisterRabbitMqTransport(RhinoServiceBusConfiguration c, IBusContainerBuilder b,
+        private void RegisterRabbitMqTransport(RabbitMQConfiguration rabbitMqConfig, RhinoServiceBusConfiguration c, IBusContainerBuilder b,
             IServiceLocator l)
         {
-            b.RegisterSingleton(() => new RabbitMQConnectionProvider());
+            b.RegisterSingleton(() => rabbitMqConfig);
+            b.RegisterSingleton(() => new RabbitMQConnectionProvider(rabbitMqConfig));
             b.RegisterSingleton<ITransactionStrategy>(() => new RabbitMQTransactionStrategy());
 
             b.RegisterSingleton(() => new RabbitMQQueueStrategy(
