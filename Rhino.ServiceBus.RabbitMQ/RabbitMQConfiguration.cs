@@ -15,6 +15,15 @@ namespace Rhino.ServiceBus.RabbitMQ
 
         public static RabbitMQConfiguration From(RabbitMQConfigurationSection.RabbitMQElement config)
         {
+            if (config == null)
+                return new RabbitMQConfiguration
+                {
+                    Username = "guest",
+                    Password = "guest",
+                    VirtualHost = "/",
+                    Endpoints = new[] {new AmqpTcpEndpoint("localhost")}
+                };
+
             return new RabbitMQConfiguration
             {
                 Username = config.Username,

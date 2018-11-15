@@ -15,21 +15,21 @@ namespace Rhino.ServiceBus.RabbitMQ
 
         public class RabbitMQElement : ConfigurationElement
         {
-            [ConfigurationProperty("username")]
+            [ConfigurationProperty("username", DefaultValue = "guest")]
             public string Username
             {
                 get { return (string) this["username"]; }
                 set { this["username"] = value; }
             }
 
-            [ConfigurationProperty("password")]
+            [ConfigurationProperty("password", DefaultValue = "guest")]
             public string Password
             {
                 get { return (string) this["password"]; }
                 set { this["password"] = value; }
             }
 
-            [ConfigurationProperty("virtualHost")]
+            [ConfigurationProperty("virtualHost", DefaultValue = "/")]
             public string VirtualHost
             {
                 get { return (string) this["virtualHost"]; }
