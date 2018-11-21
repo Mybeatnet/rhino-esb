@@ -20,15 +20,13 @@ namespace Rhino.ServiceBus.RabbitMQ
             _endpoint = endpoint;
             _connectionProvider = connectionProvider;
 
-            var addr = RabbitMQAddress.From(endpoint);
-            SubscriptionQueue = addr.ForSubQueue(SubQueue.Subscriptions).ToUri();
+            var addr = RabbitMQAddress.From(endpoint);            
             ErrorQueue = addr.ForSubQueue(SubQueue.Errors).ToUri();
             DiscardedQueue = addr.ForSubQueue(SubQueue.Discarded).ToUri();
 
             DelayedExchange = "delayed-exchange";
         }
 
-        public Uri SubscriptionQueue { get; }
         public Uri ErrorQueue { get; }
         public Uri DiscardedQueue { get; }
         public string DelayedExchange { get; }
@@ -36,8 +34,7 @@ namespace Rhino.ServiceBus.RabbitMQ
         public void InitializeQueue()
         {
             Initialize(_endpoint);
-            InitializeDelayedExchange();
-            Initialize(SubscriptionQueue);
+            InitializeDelayedExchange();            
             Initialize(ErrorQueue);
             Initialize(DiscardedQueue);
         }
@@ -60,8 +57,7 @@ namespace Rhino.ServiceBus.RabbitMQ
 
         public void PurgeAll()
         {
-            Purge(_endpoint);
-            Purge(SubscriptionQueue);
+            Purge(_endpoint);            
             Purge(ErrorQueue);
             Purge(DiscardedQueue);
         }

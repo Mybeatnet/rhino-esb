@@ -41,7 +41,7 @@ namespace Rhino.ServiceBus.RabbitMQ
 
                 if (val.ExceptionText != null)
                     info.TransportMessage.Headers["error"] = val.ExceptionText;
-                info.TransportMessage.Headers["retries"] = val.FailureCount;
+                info.TransportMessage.Headers["failures"] = val.FailureCount;
 
                 _transport.SendToErrorQueue(info.TransportMessage);
 
@@ -61,7 +61,7 @@ namespace Rhino.ServiceBus.RabbitMQ
                 FailureCount = _numberOfRetries + 1
             }));
 
-            info.TransportMessage.Headers["retries"] = 1;
+            info.TransportMessage.Headers["failures"] = 1;
             info.TransportMessage.Headers["error"] = exception.ToString();
             _transport.SendToErrorQueue(info.TransportMessage);
         }

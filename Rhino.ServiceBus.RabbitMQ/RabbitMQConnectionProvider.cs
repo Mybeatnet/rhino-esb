@@ -94,7 +94,7 @@ namespace Rhino.ServiceBus.RabbitMQ
 
             var factory = _connectionFactories.GetOrAdd(key, s =>
             {
-                var f = new ConnectionFactory();
+                var f = new ConnectionFactory();                
 
                 if (brokerAddress.Broker == RabbitMQAddress.Default)
                 {
@@ -105,7 +105,7 @@ namespace Rhino.ServiceBus.RabbitMQ
                 else
                 {
                     f.Endpoint = new AmqpTcpEndpoint(broker, brokerAddress.Ssl);
-
+                    
                     if (!string.IsNullOrEmpty(brokerAddress.VirtualHost))
                         f.VirtualHost = brokerAddress.VirtualHost;
 
@@ -150,7 +150,7 @@ namespace Rhino.ServiceBus.RabbitMQ
         }
 
         private IConnection CreateNewConnection(ConnectionFactory connectionFactory, RabbitMQAddress brokerAddress)
-        {
+        {            
             if (brokerAddress.Broker == RabbitMQAddress.Default)
                 return connectionFactory.CreateConnection(_config.Endpoints);
             return connectionFactory.CreateConnection();
