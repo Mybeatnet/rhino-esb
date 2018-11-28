@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Common.Logging;
 using RabbitMQ.Client;
 using Rhino.ServiceBus.Transport;
 
@@ -8,9 +9,12 @@ namespace Rhino.ServiceBus.RabbitMQ
     [CLSCompliant(false)]
     public class RabbitMQTransaction : IRsbTransaction
     {
+        private static readonly ILog _log = LogManager.GetLogger<RabbitMQTransaction>();
+
         [ThreadStatic] private static RabbitMQTransaction _current;
         private bool _commit;
         private Action<bool> _completions;
+        private bool _disposed;
 
         private readonly ISet<IModel> _models = new HashSet<IModel>();
 
@@ -21,22 +25,32 @@ namespace Rhino.ServiceBus.RabbitMQ
 
         public void Dispose()
         {
-            if (_completions != null)
+            if (_disposed) throw new ObjectDisposedException("Transaction is already disposed, cannot call Dispose twice");
+            _disposed = true;
+
+            try
             {
-                foreach (Action<bool> action in _completions.GetInvocationList())
-                    action(_commit);
-                _completions = null;
+                if (_completions != null)
+                {
+                    foreach (Action<bool> action in _completions.GetInvocationList())
+                        action(_commit);
+                    _completions = null;
+                }
+
+                _current = null;
+                foreach (var model in _models)
+                {
+                    if (_commit)
+                        model.TxCommit();
+                    else
+                        model.TxRollback();
+
+                    model.Dispose();
+                }
             }
-
-            _current = null;
-            foreach (var model in _models)
+            catch (Exception ex)
             {
-                if (_commit)
-                    model.TxCommit();
-                else
-                    model.TxRollback();
-
-                model.Dispose();
+                _log.Fatal("Error disposing transaction: commit=" + _commit, ex);
             }
         }
 

@@ -71,7 +71,7 @@
 					<attributes>
 						<attribute type="ComVisibleAttribute" value="false" />
 						<attribute type="CLSCompliantAttribute" value="true" />
-						<attribute type="AssemblyVersionAttribute" value="${version}.*" />
+						<attribute type="AssemblyVersionAttribute" value="${version}.0" />
 						<attribute type="AssemblyCompanyAttribute" value="Hibernating Rhinos" />
 						<attribute type="AssemblyCopyrightAttribute" value="Hibernating Rhinos &amp; Ayende Rahien 2004 - 2009" />
 						<attribute type="AssemblyInformationalVersionAttribute" value="${version} / ${commit}" />

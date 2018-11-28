@@ -77,8 +77,16 @@ namespace Rhino.ServiceBus.RabbitMQ.Tests
          
         public class ThrowingIntConsumer : ConsumerOf<int>
         {
+            private readonly IServiceBus _bus;
+
+            public ThrowingIntConsumer(IServiceBus bus)
+            {
+                _bus = bus;
+            }
+
             public void Consume(int message)
             {
+                _bus.Send(_bus.Endpoint, 10);
                 throw new InvalidOperationException("I want to be Long consumer");
             }
         }

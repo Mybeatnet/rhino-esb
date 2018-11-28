@@ -13,8 +13,7 @@ namespace Rhino.ServiceBus.RabbitMQ
 
         private readonly int _index;
         private readonly RabbitMQConnectionProvider _rabbitMQConnectionProvider;
-        private readonly Endpoint _endpoint;
-        private Thread _thread;
+        private readonly Endpoint _endpoint;        
         private readonly Action<IModel, BasicDeliverEventArgs> _callback;
         private IModel _model;
         private long _busy = 0;
@@ -29,12 +28,7 @@ namespace Rhino.ServiceBus.RabbitMQ
 
         public void Start()
         {
-            _thread = new Thread(ReceiveMessage)
-            {
-                Name = "Rhino Service Bus Worker Thread #" + _index,
-                IsBackground = true
-            };
-            _thread.Start();
+            ReceiveMessage();
         }
 
         private void ReceiveMessage()
@@ -42,20 +36,30 @@ namespace Rhino.ServiceBus.RabbitMQ
             try
             {
                 var address = RabbitMQAddress.From(_endpoint.Uri);
-                _model = _rabbitMQConnectionProvider.Open(address, _endpoint.Transactional ?? true);
-                _model.BasicQos(0, 100, false);
+                // don't open it transactional - we use ack or nack for "transactionality" on the receiving model
+                _model = _rabbitMQConnectionProvider.Open(address, false);
+                _model.BasicQos(0, 100, false);                
                 var consumer = new EventingBasicConsumer(_model);
                 consumer.Received += (o, e) =>
                 {
-                    Interlocked.Increment(ref _busy);
-
                     try
                     {
-                        _callback(_model, e);
+                        var current = Interlocked.Increment(ref _busy);
+                        _log.DebugFormat("Received message {0} ({1} in progress)", e.BasicProperties.MessageId,
+                            current);
+
+                        try
+                        {
+                            _callback(_model, e);
+                        }
+                        finally
+                        {
+                            Interlocked.Decrement(ref _busy);
+                        }
                     }
-                    finally
+                    catch (Exception ex)
                     {
-                        Interlocked.Decrement(ref _busy);
+                        _log.Fatal("Unhandled exception in consumer", ex);
                     }
                 };
                 _model.BasicConsume(address.QueueName, false, consumer);
@@ -68,10 +72,11 @@ namespace Rhino.ServiceBus.RabbitMQ
 
         public void Stop()
         {
+            _model?.Close();
             _model?.Dispose();
-            _model = null;
             while (Interlocked.Read(ref _busy) > 0)
                 Thread.Sleep(200);
+            _model = null;
         }
     }
 }

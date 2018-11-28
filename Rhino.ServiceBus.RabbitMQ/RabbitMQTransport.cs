@@ -19,7 +19,7 @@ namespace Rhino.ServiceBus.RabbitMQ
 
         [ThreadStatic] private static RabbitMQCurrentMessageInformation _currentMessageInformation;
 
-        private readonly RabbitMQConnectionProvider _connectionProvider;        
+        private readonly RabbitMQConnectionProvider _connectionProvider;
         private readonly IMessageBuilder<RabbitMQMessage> _messageBuilder;
         private readonly RabbitMQQueueStrategy _queueStrategy;
         private readonly IMessageSerializer _serializer;
@@ -42,7 +42,7 @@ namespace Rhino.ServiceBus.RabbitMQ
             _txStrategy = txStrategy;
             _connectionProvider = connectionProvider;
             _queueStrategy = queueStrategy;
-            Endpoint = new Endpoint {Uri = endpoint, Transactional = consumeInTransaction};
+            Endpoint = new Endpoint { Uri = endpoint, Transactional = consumeInTransaction };
             ThreadCount = threadCount;
 
             new RabbitMQErrorAction(numberOfRetries, this).Init();
@@ -111,7 +111,7 @@ namespace Rhino.ServiceBus.RabbitMQ
                 Priority = priority
             };
             var message = _messageBuilder.BuildFromMessageBatch(messageInformation);
-            var delay = (int) Math.Max(processAgainAt.Subtract(DateTime.Now).TotalMilliseconds, 0);
+            var delay = (int)Math.Max(processAgainAt.Subtract(DateTime.Now).TotalMilliseconds, 0);
             if (delay > 100)
             {
                 message.Headers["x-delay"] = delay;
@@ -126,7 +126,7 @@ namespace Rhino.ServiceBus.RabbitMQ
 
         public void Reply(params object[] messages)
         {
-            Send(new Endpoint {Uri = _currentMessageInformation.Source}, messages, RhinoMessagePriority.Normal);
+            Send(new Endpoint { Uri = _currentMessageInformation.Source }, messages, RhinoMessagePriority.Normal);
         }
 
         public event Action<CurrentMessageInformation> MessageSent;
@@ -142,7 +142,7 @@ namespace Rhino.ServiceBus.RabbitMQ
 
         public void Dispose()
         {
-            Task.WaitAll(_consumers.Select(x => Task.Run((Action) x.Stop)).ToArray(), 5000);
+            Task.WaitAll(_consumers.Select(x => Task.Run((Action)x.Stop)).ToArray(), 5000);
             foreach (var cons in _consumers)
                 cons.Stop();
             _connectionProvider.Dispose();
@@ -150,95 +150,115 @@ namespace Rhino.ServiceBus.RabbitMQ
 
         private void ReceiveMessage(IModel model, BasicDeliverEventArgs arg)
         {
-            var msgType = (MessageType) (int) arg.BasicProperties.Headers["MessageType"];
-            switch (msgType)
+            try
             {
-                case MessageType.AdministrativeMessageMarker:
-                    ProcessMessage(model, arg,
-                        AdministrativeMessageArrived,
-                        AdministrativeMessageProcessingCompleted,
-                        null,
-                        null);
-                    break;
-                case MessageType.ShutDownMessageMarker:
-                    model.BasicAck(arg.DeliveryTag, false);
-                    //ignoring this one
-                    break;
+                _logger.DebugFormat("Received message {0}", arg.BasicProperties.MessageId);
 
-                case MessageType.TimeoutMessageMarker:
-                default:
-                    ProcessMessage(model, arg,
-                        MessageArrived,
-                        MessageProcessingCompleted,
-                        BeforeMessageTransactionCommit,
-                        BeforeMessageTransactionRollback);
-                    break;
+                var msgType = (MessageType)Convert.ToInt32(arg.BasicProperties.Headers["MessageType"]);
+                switch (msgType)
+                {
+                    case MessageType.AdministrativeMessageMarker:
+                        ProcessMessage(model, arg,
+                            AdministrativeMessageArrived,
+                            AdministrativeMessageProcessingCompleted,
+                            null,
+                            null);
+                        break;
+                    case MessageType.ShutDownMessageMarker:
+                        model.BasicAck(arg.DeliveryTag, false);
+                        //ignoring this one
+                        break;
+
+                    case MessageType.TimeoutMessageMarker:
+                    default:
+                        ProcessMessage(model, arg,
+                            MessageArrived,
+                            MessageProcessingCompleted,
+                            BeforeMessageTransactionCommit,
+                            BeforeMessageTransactionRollback);
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Error($"Error processing message {arg.BasicProperties.MessageId}", ex);
+                var adr = RabbitMQAddress.From(_queueStrategy.DiscardedQueue);
+                model.BasicPublish("", adr.QueueName, true, arg.BasicProperties, arg.Body);
+                model.BasicAck(arg.DeliveryTag, false);
             }
         }
 
-        private void ProcessMessage(IModel model, BasicDeliverEventArgs arg,
+        private void ProcessMessage(IModel model,
+            BasicDeliverEventArgs arg,
             Func<CurrentMessageInformation, bool> messageRecieved,
             Action<CurrentMessageInformation, Exception> messageCompleted,
             Action<CurrentMessageInformation> beforeTransactionCommit,
             Action<CurrentMessageInformation> beforeTransactionRollback)
         {
-            using (var tx = _txStrategy.Begin())
+            _logger.DebugFormat("Processing message {0}", arg.DeliveryTag);
+
+            var tx = _txStrategy.Begin();
+            // transaction is disposed (rolledback or committed in MessageHandlingCompletion
+
+            RabbitMQTransaction.Current.Enlist(commit =>
             {
-                RabbitMQTransaction.Current.Enlist(commit =>
+                model.BasicAck(arg.DeliveryTag, false);
+                _logger.DebugFormat("Sending BasickAck {0}", arg.DeliveryTag);
+            });
+
+            var rabbitMsg = new RabbitMQMessage(arg);
+
+            Exception exception = null;
+            var msgInfo = CreateMessageInfo(model, arg, rabbitMsg, null, null);
+            try
+            {
+                object[] messages = null;
+                using (var ms = new MemoryStream(arg.Body))
                 {
-                    if (commit)
-                        model.BasicAck(arg.DeliveryTag, false);
-                    else
-                        model.BasicNack(arg.DeliveryTag, false, true);
-                });
+                    messages = _serializer.Deserialize(ms);
+                }
 
-                var rabbitMsg = new RabbitMQMessage(arg);
-
-                Exception exception = null;
-                var msgInfo = CreateMessageInfo(model, arg, rabbitMsg, null, null);
                 try
                 {
-                    object[] messages = null;
-                    using (var ms = new MemoryStream(arg.Body))
+                    foreach (var msg in messages)
                     {
-                        messages = _serializer.Deserialize(ms);
-                    }
+                        msgInfo = CreateMessageInfo(model, arg, rabbitMsg, messages, msg);
 
-                    try
-                    {
-                        foreach (var msg in messages)
-                        {
-                            msgInfo = CreateMessageInfo(model, arg, rabbitMsg, messages, msg);
+                        _currentMessageInformation = msgInfo;
 
-                            _currentMessageInformation = msgInfo;
-
-                            if (TransportUtil.ProcessSingleMessage(msgInfo, messageRecieved) == false)
-                                Discard(msgInfo.Message);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        exception = ex;
-                        _logger.Error("Failed to process message", ex);
+                        if (TransportUtil.ProcessSingleMessage(msgInfo, messageRecieved) == false)
+                            Discard(msgInfo.Message);
                     }
                 }
                 catch (Exception ex)
                 {
                     exception = ex;
-                    _logger.Error("Failed to deserialize message", ex);
-                    MessageSerializationException?.Invoke(msgInfo, ex);
+                    _logger.Error("Failed to process message", ex);
                 }
-                finally
-                {
-                    Action sendMessageBackToQueue = null;
-                    if (Endpoint.Transactional == false)
-                        sendMessageBackToQueue = () => SendMessageToQueue(rabbitMsg, Endpoint.Uri, null);
-                    var messageHandlingCompletion = new MessageHandlingCompletion(tx, sendMessageBackToQueue, exception,
-                        messageCompleted, beforeTransactionCommit, beforeTransactionRollback, _logger,
-                        MessageProcessingFailure, msgInfo);
-                    messageHandlingCompletion.HandleMessageCompletion();
-                    _currentMessageInformation = null;
-                }
+            }
+            catch (Exception ex)
+            {
+                exception = ex;
+                _logger.Error("Failed to deserialize message", ex);
+                MessageSerializationException?.Invoke(msgInfo, ex);
+            }
+            finally
+            {
+                // always send message back to queue - nacks don't seem reliable, seem to get stuck sometimes
+                Action sendMessageBackToQueue = () => SendMessageToQueue(rabbitMsg, Endpoint.Uri, null);
+
+                var messageHandlingCompletion = new MessageHandlingCompletion(tx,
+                    sendMessageBackToQueue,
+                    exception,
+                    messageCompleted,
+                    beforeTransactionCommit,
+                    beforeTransactionRollback,
+                    _logger,
+                    MessageProcessingFailure,
+                    msgInfo);
+
+                messageHandlingCompletion.HandleMessageCompletion();
+                _currentMessageInformation = null;
             }
         }
 
@@ -261,6 +281,7 @@ namespace Rhino.ServiceBus.RabbitMQ
         private void SendMessageToQueue(RabbitMQMessage message, Uri destination,
             OutgoingMessageInformation messageInformation)
         {
+            _logger.DebugFormat("SendMessageToQueue({0},{1})", message.MessageId, destination);
             var addr = RabbitMQAddress.From(destination);
             using (var channel = _connectionProvider.Open(addr, true))
             {
@@ -283,7 +304,7 @@ namespace Rhino.ServiceBus.RabbitMQ
         {
             _logger.DebugFormat("Discarding message {0} ({1}) because there are no consumers for it.",
                 message, _currentMessageInformation.TransportMessageId);
-            Send(new Endpoint {Uri = _queueStrategy.DiscardedQueue}, new[] {message}, RhinoMessagePriority.Low);
+            Send(new Endpoint { Uri = _queueStrategy.DiscardedQueue }, new[] { message }, RhinoMessagePriority.Low);
         }
 
 
