@@ -21,11 +21,15 @@ namespace Rhino.ServiceBus.RabbitMQ
         {
             _transport.MessageSerializationException += Transport_OnMessageSerializationException;
             _transport.MessageProcessingFailure += Transport_OnMessageProcessingFailure;
-            _transport.MessageProcessingCompleted += Transport_OnMessageProcessingCompleted;
-            _transport.MessageArrived += Transport_OnMessageArrived;
+            _transport.MessageProcessingCompleted += Transport_OnMessageProcessingCompleted;            
         }
 
-        private bool Transport_OnMessageArrived(CurrentMessageInformation information)
+        /// <summary>
+        /// Returns true if message is processed by error action, and should not be processed further
+        /// </summary>
+        /// <param name="information"></param>
+        /// <returns></returns>
+        public bool Process(CurrentMessageInformation information)
         {
             var info = (RabbitMQCurrentMessageInformation) information;
             ErrorCounter val = null;

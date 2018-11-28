@@ -33,7 +33,17 @@ namespace Rhino.ServiceBus.RabbitMQ
                 if (_completions != null)
                 {
                     foreach (Action<bool> action in _completions.GetInvocationList())
-                        action(_commit);
+                    {
+                        try
+                        {
+                            action(_commit);
+                        }
+                        catch (Exception ex)
+                        {
+                            _log.Fatal("Error performing completions: commit=" + _commit, ex);
+                        }
+                    }
+
                     _completions = null;
                 }
 

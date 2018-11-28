@@ -32,6 +32,10 @@ namespace Rhino.ServiceBus.RabbitMQ
             return source;
         }
 
+        public RabbitMQMessage(BasicGetResult arg) : this(arg.Body, arg.BasicProperties)
+        {
+        }
+
         public RabbitMQMessage(BasicDeliverEventArgs arg) : this(arg.Body, arg.BasicProperties)
         {
         }

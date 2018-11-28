@@ -234,7 +234,7 @@ namespace Rhino.ServiceBus.RabbitMQ
                 foreach (var key in keys)
                 {
                     _log.InfoFormat("Binding Key {0} on Queue {1} on Exchange {2}", key, queue, exchange);
-                    channel.QueueUnbind(queue, exchange, key);
+                    channel.QueueUnbind(queue, exchange, key, new Dictionary<string, object>());
                 }
             }
         }

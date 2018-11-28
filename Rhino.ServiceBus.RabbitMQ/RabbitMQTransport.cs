@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Common.Logging;
+using Common.Logging.Configuration;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using Rhino.ServiceBus.Impl;
@@ -24,6 +25,7 @@ namespace Rhino.ServiceBus.RabbitMQ
         private readonly RabbitMQQueueStrategy _queueStrategy;
         private readonly IMessageSerializer _serializer;
         private readonly ITransactionStrategy _txStrategy;
+        private readonly RabbitMQErrorAction _errorAction;
 
         private RabbitMQConsumer[] _consumers;
 
@@ -42,10 +44,11 @@ namespace Rhino.ServiceBus.RabbitMQ
             _txStrategy = txStrategy;
             _connectionProvider = connectionProvider;
             _queueStrategy = queueStrategy;
-            Endpoint = new Endpoint { Uri = endpoint, Transactional = consumeInTransaction };
+            Endpoint = new Endpoint {Uri = endpoint, Transactional = consumeInTransaction};
             ThreadCount = threadCount;
 
-            new RabbitMQErrorAction(numberOfRetries, this).Init();
+            _errorAction = new RabbitMQErrorAction(numberOfRetries, this);
+            _errorAction.Init();
             _messageBuilder.Initialize(Endpoint);
         }
 
@@ -197,19 +200,20 @@ namespace Rhino.ServiceBus.RabbitMQ
         {
             _logger.DebugFormat("Processing message {0}", arg.DeliveryTag);
 
-            var tx = _txStrategy.Begin();
-            // transaction is disposed (rolledback or committed in MessageHandlingCompletion
-
-            RabbitMQTransaction.Current.Enlist(commit =>
-            {
-                model.BasicAck(arg.DeliveryTag, false);
-                _logger.DebugFormat("Sending BasickAck {0}", arg.DeliveryTag);
-            });
-
             var rabbitMsg = new RabbitMQMessage(arg);
 
             Exception exception = null;
             var msgInfo = CreateMessageInfo(model, arg, rabbitMsg, null, null);
+
+            if (_errorAction.Process(msgInfo))
+            {
+                model.BasicAck(arg.DeliveryTag, false);
+                return;
+            }
+
+            var tx = _txStrategy.Begin();
+            // transaction is disposed (rolledback or committed in MessageHandlingCompletion
+
             try
             {
                 object[] messages = null;
@@ -225,6 +229,9 @@ namespace Rhino.ServiceBus.RabbitMQ
                         msgInfo = CreateMessageInfo(model, arg, rabbitMsg, messages, msg);
 
                         _currentMessageInformation = msgInfo;
+
+                        if (_errorAction.Process(msgInfo))
+                            continue;
 
                         if (TransportUtil.ProcessSingleMessage(msgInfo, messageRecieved) == false)
                             Discard(msgInfo.Message);
@@ -244,13 +251,30 @@ namespace Rhino.ServiceBus.RabbitMQ
             }
             finally
             {
-                // always send message back to queue - nacks don't seem reliable, seem to get stuck sometimes
-                Action sendMessageBackToQueue = () => SendMessageToQueue(rabbitMsg, Endpoint.Uri, null);
+                Action sendMessageBackToQueue = null;
+                if (Endpoint.Transactional != true)
+                    sendMessageBackToQueue = () => SendMessageToQueue(rabbitMsg, Endpoint.Uri, null);
+
+                Action<CurrentMessageInformation, Exception> onComplete = (cmi, ex) =>
+                {
+                    if (ex != null)
+                    {
+                        _logger.DebugFormat("Sending BasicReject for {0}", cmi.MessageId);
+                        model.BasicReject(arg.DeliveryTag, true);
+                    }
+                    else
+                    {
+                        model.BasicAck(arg.DeliveryTag, false);
+                        _logger.DebugFormat("Sending BasickAck for {0}", cmi.MessageId);
+                    }
+
+                    messageCompleted?.Invoke(cmi, ex);
+                };
 
                 var messageHandlingCompletion = new MessageHandlingCompletion(tx,
                     sendMessageBackToQueue,
                     exception,
-                    messageCompleted,
+                    onComplete,
                     beforeTransactionCommit,
                     beforeTransactionRollback,
                     _logger,
@@ -259,6 +283,7 @@ namespace Rhino.ServiceBus.RabbitMQ
 
                 messageHandlingCompletion.HandleMessageCompletion();
                 _currentMessageInformation = null;
+                _logger.Debug("Message processing complete");
             }
         }
 
