@@ -14,11 +14,12 @@ namespace Rhino.ServiceBus.Msmq
             new Regex(@"^(\{{0,1}([0-9a-fA-F]){8}-([0-9a-fA-F]){4}-([0-9a-fA-F]){4}-([0-9a-fA-F]){4}-([0-9a-fA-F]){12}\}{0,1})$",
                 RegexOptions.Compiled);
 
-
-
         public static QueueInfo GetQueuePath(Endpoint endpoint)
-        {
+        {            
             var uri = endpoint.Uri;
+            if (uri.Scheme != "msmq")
+                throw new InvalidOperationException($"Cannot determine MSMQ address for {uri}");
+
             if (uri.AbsolutePath.IndexOf("/", 1) >= 0)
             {
                 throw new InvalidOperationException(

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Security.Authentication;
 using Common.Logging;
 using RabbitMQ.Client;
+using Rhino.ServiceBus.Exceptions;
 using Rhino.ServiceBus.Transport;
 
 namespace Rhino.ServiceBus.RabbitMQ
@@ -11,6 +12,8 @@ namespace Rhino.ServiceBus.RabbitMQ
     [Serializable]
     public class RabbitMQAddress
     {
+        private static readonly string[] schemes = {"rmq", "amqp", "amqps"};
+
         public const string Default = "default";
 
         private static readonly ILog _log = LogManager.GetLogger<RabbitMQAddress>();
@@ -67,6 +70,9 @@ namespace Rhino.ServiceBus.RabbitMQ
 
         public static RabbitMQAddress From(Uri uri)
         {
+            if (!IsValid(uri))
+                throw new MessagePublicationException($"RabbitMQ cannot publish to {uri}");
+
             var broker = uri.Host;
 
             if (uri.Port != -1)
@@ -264,6 +270,11 @@ namespace Rhino.ServiceBus.RabbitMQ
                 url += ":" + parts[1];
 
             return new Uri(url);
+        }
+
+        public static bool IsValid(Uri url)
+        {
+            return schemes.Contains(url.Scheme.ToLower());            
         }
     }
 }

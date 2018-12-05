@@ -9,15 +9,14 @@ using Rhino.ServiceBus.Transport;
 namespace Rhino.ServiceBus.RabbitMQ
 {
     public class RabbitMQTransportConfigurationAware : IBusConfigurationAware
-    {
-        private readonly string[] schemes = {"rmq", "amqp", "amqps"};
+    {        
         public void Configure(AbstractRhinoServiceBusConfiguration config, IBusContainerBuilder builder,
             IServiceLocator locator)
         {
             if (!(config is RhinoServiceBusConfiguration) && !(config is LoadBalancerConfiguration))
                 return;
 
-            if (!schemes.Contains(config.Endpoint.Scheme.ToLower()))
+            if (!RabbitMQAddress.IsValid(config.Endpoint))
                 return;
 
             if (!config.DisableAutoQueueCreation)
