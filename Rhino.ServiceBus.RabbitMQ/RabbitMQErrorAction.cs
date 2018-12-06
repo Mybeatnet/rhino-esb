@@ -49,6 +49,8 @@ namespace Rhino.ServiceBus.RabbitMQ
 
                 _transport.SendToErrorQueue(info.TransportMessage);
 
+                writer.Remove(info.TransportMessageId);
+
                 result = true;
             });
 
@@ -61,13 +63,9 @@ namespace Rhino.ServiceBus.RabbitMQ
             var info = (RabbitMQCurrentMessageInformation) information;
             _failureCounts.Write(writer => writer.Add(info.TransportMessageId, new ErrorCounter
             {
-                ExceptionText = exception == null ? null : exception.ToString(),
+                ExceptionText = exception?.ToString(),
                 FailureCount = _numberOfRetries + 1
             }));
-
-            info.TransportMessage.Headers["failures"] = 1;
-            info.TransportMessage.Headers["error"] = exception.ToString();
-            _transport.SendToErrorQueue(info.TransportMessage);
         }
 
         private void Transport_OnMessageProcessingCompleted(CurrentMessageInformation information, Exception ex)
