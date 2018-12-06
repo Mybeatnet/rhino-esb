@@ -4,7 +4,6 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Common.Logging;
-using Common.Logging.Configuration;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using Rhino.ServiceBus.Impl;
@@ -56,15 +55,14 @@ namespace Rhino.ServiceBus.RabbitMQ
 
         public void Start()
         {
+            HaveStarted = true;
+            Started?.Invoke();
             _consumers = Enumerable.Range(0, ThreadCount)
                 .Select(i => new RabbitMQConsumer(i, _connectionProvider, Endpoint, ReceiveMessage))
                 .ToArray();
 
             foreach (var cons in _consumers)
                 cons.Start();
-
-            HaveStarted = true;
-            Started?.Invoke();
         }
 
         public Endpoint Endpoint { get; }
