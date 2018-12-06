@@ -13,10 +13,12 @@ namespace Rhino.ServiceBus.RabbitMQ
         public RabbitMQMessage(byte[] data, IBasicProperties properties)
         {
             Data = data;
-            MessageId = Guid.Parse(properties.MessageId);
-            Priority = properties.Priority;
-            ReplyTo = properties.ReplyTo;
-            Headers = properties.Headers.ToDictionary(x => x.Key, x => GetHeaderValue(x.Value));
+            MessageId = properties.IsMessageIdPresent() && properties.MessageId != null ? Guid.Parse(properties.MessageId) : Guid.Empty;
+            Priority = properties.IsPriorityPresent() ? properties.Priority : 4;
+            ReplyTo = properties.IsReplyToPresent() ? properties.ReplyTo : null;
+            Headers = properties.IsHeadersPresent()
+                ? properties.Headers.ToDictionary(x => x.Key, x => GetHeaderValue(x.Value))
+                : new Dictionary<string, object>();
         }
 
         /// <summary>
@@ -28,7 +30,7 @@ namespace Rhino.ServiceBus.RabbitMQ
         private object GetHeaderValue(object source)
         {
             if (source is byte[]) // RabbitMQ sends strings back as byte[] arrays
-                return Encoding.UTF8.GetString((byte[]) source);
+                return Encoding.UTF8.GetString((byte[])source);
             return source;
         }
 
@@ -41,7 +43,7 @@ namespace Rhino.ServiceBus.RabbitMQ
         }
 
         public RabbitMQMessage()
-        {            
+        {
         }
 
         public byte[] Data { get; set; }
@@ -54,7 +56,7 @@ namespace Rhino.ServiceBus.RabbitMQ
         public void Populate(IBasicProperties props)
         {
             props.MessageId = MessageId.ToString();
-            props.Priority = (byte)Priority;            
+            props.Priority = (byte)Priority;
             props.ReplyTo = ReplyTo;
             if (Expiration != null)
                 props.Expiration = Expiration.ToString();
