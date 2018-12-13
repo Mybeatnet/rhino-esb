@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
@@ -13,6 +14,8 @@ namespace Rhino.ServiceBus.RabbitMQ.Tests
 {
     public class UsingRabbitMQBus : IDisposable
     {
+        private static readonly IList<int> _receivedInts = new List<int>();
+
         public UsingRabbitMQBus()
         {
             StringConsumer.Value = null;
@@ -41,7 +44,7 @@ namespace Rhino.ServiceBus.RabbitMQ.Tests
         private readonly IWindsorContainer container;
         private readonly IStartableServiceBus bus;
 
-        private RabbitMQMessage GetErrorMessage()
+        private IList<RabbitMQMessage> GetErrorMessages(int count)
         {
             var transport = (RabbitMQTransport) container.Resolve<ITransport>();
 
@@ -50,11 +53,11 @@ namespace Rhino.ServiceBus.RabbitMQ.Tests
                 Thread.Sleep(Debugger.IsAttached ? 5000 : 500);
                 using (var tx = container.Resolve<ITransactionStrategy>().Begin())
                 {
-                    var message = transport.ReadMessages("errors").FirstOrDefault();
-                    if (message != null)
+                    var messages = transport.ReadMessages("errors").Take(count).ToList();
+                    if (messages.Count == count)
                     {
                         tx.Complete();
-                        return message;
+                        return messages;
                     }
                 }
             }
@@ -77,7 +80,7 @@ namespace Rhino.ServiceBus.RabbitMQ.Tests
          
         public class ThrowingIntConsumer : ConsumerOf<int>
         {
-            private readonly IServiceBus _bus;
+            private readonly IServiceBus _bus;            
 
             public ThrowingIntConsumer(IServiceBus bus)
             {
@@ -86,7 +89,11 @@ namespace Rhino.ServiceBus.RabbitMQ.Tests
 
             public void Consume(int message)
             {
-                _bus.Send(_bus.Endpoint, 10);
+                lock(_receivedInts)
+                    _receivedInts.Add(message);
+                _bus.Send(_bus.Endpoint, 110);
+                _bus.Send(_bus.Endpoint, 120);
+                _bus.Send(_bus.Endpoint, 130);
                 throw new InvalidOperationException("I want to be Long consumer");
             }
         }
@@ -94,6 +101,8 @@ namespace Rhino.ServiceBus.RabbitMQ.Tests
         [Fact]
         public void Can_handle_errors_gracefully()
         {
+            _receivedInts.Clear();
+
             using (var tx = container.Resolve<ITransactionStrategy>().Begin())
             {
                 bus.Send(bus.Endpoint, 5);
@@ -101,10 +110,45 @@ namespace Rhino.ServiceBus.RabbitMQ.Tests
                 tx.Complete();
             }
 
-            var message = GetErrorMessage();
+            Thread.Sleep(500);
+
+            var message = GetErrorMessages(1)[0];
 
             var msgs = container.Resolve<IMessageSerializer>().Deserialize(message.Data);
             Assert.Equal(5, msgs[0]);
+            Assert.Equal("5,5,5,5,5", string.Join(",", _receivedInts));
+        }
+
+        [Fact]
+        public void Can_handle_errors_under_load_gracefully()
+        {
+            _receivedInts.Clear();
+
+            using (var tx = container.Resolve<ITransactionStrategy>().Begin())
+            {
+                for (var i = 0; i < 100; i++)
+                    bus.Send(bus.Endpoint, i);
+
+                tx.Complete();
+            }
+
+            Thread.Sleep(500);
+
+            var messages = GetErrorMessages(100);
+
+            var serializer = container.Resolve<IMessageSerializer>();
+            var msgs = messages.Select(x => (int) serializer.Deserialize(x.Data)[0]).OrderBy(x => x).ToList();
+
+            for (var i = 0; i < 100; i++)
+            {
+                Assert.Equal(msgs[i], i);
+                var rec = _receivedInts.Count(x => x == i);
+                Assert.True(rec == 5, $"Received {i} {rec} times");
+            }
+
+            Assert.DoesNotContain(110, _receivedInts);
+            Assert.DoesNotContain(120, _receivedInts);
+            Assert.DoesNotContain(130, _receivedInts);
         }
 
         [Fact]
