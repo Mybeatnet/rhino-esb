@@ -52,8 +52,8 @@ namespace Rhino.ServiceBus.RabbitMQ
                 {
                     if (_commit)
                         model.TxCommit();
-                    else
-                        model.TxRollback();
+                    //else
+                    //    model.TxRollback();
 
                     model.Dispose();
                 }
