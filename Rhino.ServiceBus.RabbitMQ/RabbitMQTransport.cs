@@ -57,7 +57,7 @@ namespace Rhino.ServiceBus.RabbitMQ
         {
             HaveStarted = true;
             Started?.Invoke();
-            _consumer = new  RabbitMQConsumer(ThreadCount, _connectionProvider, Endpoint, ReceiveMessage);
+            _consumer = new RabbitMQConsumer(ThreadCount, _connectionProvider, _txStrategy, Endpoint, ReceiveMessage);
             _consumer.Start();
         }
 
@@ -160,8 +160,8 @@ namespace Rhino.ServiceBus.RabbitMQ
                             null);
                         break;
                     case MessageType.ShutDownMessageMarker:
-                        model.BasicAck(arg.DeliveryTag, false);
-                        //ignoring this one
+                        using (var tx = RabbitMQTransaction.Current)
+                            tx.Complete();
                         break;
 
                     case MessageType.TimeoutMessageMarker:
@@ -176,10 +176,13 @@ namespace Rhino.ServiceBus.RabbitMQ
             }
             catch (Exception ex)
             {
-                _logger.Error($"Error processing message {arg.BasicProperties.MessageId}", ex);
-                var adr = RabbitMQAddress.From(_queueStrategy.DiscardedQueue);
-                model.BasicPublish("", adr.QueueName, true, arg.BasicProperties, arg.Body);
-                model.BasicAck(arg.DeliveryTag, false);
+                using (var tx = RabbitMQTransaction.Current)
+                {
+                    _logger.Error($"Error processing message {arg.BasicProperties.MessageId}", ex);
+                    var adr = RabbitMQAddress.From(_queueStrategy.DiscardedQueue);
+                    model.BasicPublish("", adr.QueueName, true, arg.BasicProperties, arg.Body);
+                    tx.Complete();
+                }
             }
         }
 
@@ -196,18 +199,15 @@ namespace Rhino.ServiceBus.RabbitMQ
 
             Exception exception = null;
             var msgInfo = CreateMessageInfo(model, arg, rabbitMsg, null, null);
+            
 
-            if (_errorAction.Process(msgInfo))
-            {
-                model.BasicAck(arg.DeliveryTag, false);
-                return;
-            }
-
-            var tx = _txStrategy.Begin();
             // transaction is disposed (rolledback or committed in MessageHandlingCompletion
 
             try
             {
+                if (_errorAction.Process(msgInfo))
+                    return;
+
                 object[] messages = null;
                 using (var ms = new MemoryStream(arg.Body))
                 {
@@ -223,9 +223,6 @@ namespace Rhino.ServiceBus.RabbitMQ
                         msgInfo = CreateMessageInfo(model, arg, rabbitMsg, messages, msg);
 
                         _currentMessageInformation = msgInfo;
-
-                        if (_errorAction.Process(msgInfo))
-                            continue;
 
                         if (TransportUtil.ProcessSingleMessage(msgInfo, messageRecieved) == false)
                             Discard(msgInfo.Message);
@@ -249,26 +246,10 @@ namespace Rhino.ServiceBus.RabbitMQ
                 if (Endpoint.Transactional != true)
                     sendMessageBackToQueue = () => SendMessageToQueue(rabbitMsg, Endpoint.Uri, null);
 
-                Action<CurrentMessageInformation, Exception> onComplete = (cmi, ex) =>
-                {
-                    if (ex != null)
-                    {
-                        _logger.DebugFormat("Sending BasicReject for {0}", cmi.MessageId);
-                        model.BasicReject(arg.DeliveryTag, true);
-                    }
-                    else
-                    {
-                        model.BasicAck(arg.DeliveryTag, false);
-                        _logger.DebugFormat("Sending BasickAck for {0}", cmi.MessageId);
-                    }
-
-                    messageCompleted?.Invoke(cmi, ex);
-                };
-
-                var messageHandlingCompletion = new MessageHandlingCompletion(tx,
+                var messageHandlingCompletion = new MessageHandlingCompletion(RabbitMQTransaction.Current,
                     sendMessageBackToQueue,
                     exception,
-                    onComplete,
+                    messageCompleted,
                     beforeTransactionCommit,
                     beforeTransactionRollback,
                     _logger,

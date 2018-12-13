@@ -1,7 +1,6 @@
 ﻿using System;
 using Common.Logging;
 using Rhino.ServiceBus.Impl;
-using Rhino.ServiceBus.Msmq;
 
 namespace Rhino.ServiceBus.Transport
 {
@@ -18,7 +17,15 @@ namespace Rhino.ServiceBus.Transport
 
 		private Exception exception;
 
-        public MessageHandlingCompletion(IRsbTransaction tx, Action sendMessageBackToQueue, Exception exception, Action<CurrentMessageInformation, Exception> messageCompleted, Action<CurrentMessageInformation> beforeTransactionCommit, Action<CurrentMessageInformation> beforeTransactionRollback, ILog logger, Action<CurrentMessageInformation, Exception> messageProcessingFailure, CurrentMessageInformation currentMessageInformation)
+        public MessageHandlingCompletion(IRsbTransaction tx, 
+            Action sendMessageBackToQueue, 
+            Exception exception, 
+            Action<CurrentMessageInformation, Exception> messageCompleted, 
+            Action<CurrentMessageInformation> beforeTransactionCommit, 
+            Action<CurrentMessageInformation> beforeTransactionRollback, 
+            ILog logger, 
+            Action<CurrentMessageInformation, Exception> messageProcessingFailure, 
+            CurrentMessageInformation currentMessageInformation)
 		{
 			this.tx = tx;
 			this.sendMessageBackToQueue = sendMessageBackToQueue;
@@ -30,7 +37,6 @@ namespace Rhino.ServiceBus.Transport
 			this.messageProcessingFailure = messageProcessingFailure;
 			this.currentMessageInformation = currentMessageInformation;
 		}
-
 
 		public void HandleMessageCompletion()
 		{
