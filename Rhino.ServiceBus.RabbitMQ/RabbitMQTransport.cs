@@ -26,7 +26,7 @@ namespace Rhino.ServiceBus.RabbitMQ
         private readonly ITransactionStrategy _txStrategy;
         private readonly RabbitMQErrorAction _errorAction;
 
-        private RabbitMQConsumer[] _consumers;
+        private RabbitMQConsumer _consumer;
 
         public RabbitMQTransport(IMessageSerializer serializer,
             Uri endpoint,
@@ -57,12 +57,8 @@ namespace Rhino.ServiceBus.RabbitMQ
         {
             HaveStarted = true;
             Started?.Invoke();
-            _consumers = Enumerable.Range(0, ThreadCount)
-                .Select(i => new RabbitMQConsumer(i, _connectionProvider, Endpoint, ReceiveMessage))
-                .ToArray();
-
-            foreach (var cons in _consumers)
-                cons.Start();
+            _consumer = new  RabbitMQConsumer(ThreadCount, _connectionProvider, Endpoint, ReceiveMessage);
+            _consumer.Start();
         }
 
         public Endpoint Endpoint { get; }
@@ -143,9 +139,7 @@ namespace Rhino.ServiceBus.RabbitMQ
 
         public void Dispose()
         {
-            Task.WaitAll(_consumers.Select(x => Task.Run((Action)x.Stop)).ToArray(), 5000);
-            foreach (var cons in _consumers)
-                cons.Stop();
+            _consumer.Stop();
             _connectionProvider.Dispose();
         }
 
@@ -224,6 +218,8 @@ namespace Rhino.ServiceBus.RabbitMQ
                 {
                     foreach (var msg in messages)
                     {
+                        _currentMessageInformation = null;
+
                         msgInfo = CreateMessageInfo(model, arg, rabbitMsg, messages, msg);
 
                         _currentMessageInformation = msgInfo;
@@ -238,7 +234,7 @@ namespace Rhino.ServiceBus.RabbitMQ
                 catch (Exception ex)
                 {
                     exception = ex;
-                    _logger.Error("Failed to process message", ex);
+                    _logger.Error("Failed to process message " + _currentMessageInformation?.Message, ex);
                 }
             }
             catch (Exception ex)
@@ -306,21 +302,48 @@ namespace Rhino.ServiceBus.RabbitMQ
         {
             _logger.DebugFormat("SendMessageToQueue({0},{1})", message.MessageId, destination);
             var addr = RabbitMQAddress.From(destination);
-            using (var channel = _connectionProvider.Open(addr, true))
+            var tx = RabbitMQTransaction.Current;
+            //if (tx == null)
             {
-                var properties = channel.CreateBasicProperties();
-                message.Populate(properties);
+                using (var channel = _connectionProvider.Open(addr, true))
+                {
+                    var properties = channel.CreateBasicProperties();
+                    message.Populate(properties);
 
-                var routingKey = addr.QueueName;
+                    var routingKey = addr.QueueName;
 
-                if (string.IsNullOrEmpty(routingKey))
-                    routingKey = addr.RoutingKeys;
+                    if (string.IsNullOrEmpty(routingKey))
+                        routingKey = addr.RoutingKeys;
 
-                if (string.IsNullOrEmpty(routingKey) && messageInformation != null)
-                    routingKey = messageInformation.Messages[0].GetType().FullName;
+                    if (string.IsNullOrEmpty(routingKey) && messageInformation != null)
+                        routingKey = messageInformation.Messages[0].GetType().FullName;
 
-                channel.BasicPublish(addr.Exchange ?? "", routingKey, true, properties, message.Data);
+                    channel.BasicPublish(addr.Exchange ?? "", routingKey, true, properties, message.Data);
+                }
             }
+            //else
+            //{
+            //    var channel = _connectionProvider.Open(addr, true);
+
+            //    tx.Enlist(commit =>
+            //    {
+            //        if (commit)
+            //        {
+            //            var properties = channel.CreateBasicProperties();
+            //            message.Populate(properties);
+
+            //            var routingKey = addr.QueueName;
+
+            //            if (string.IsNullOrEmpty(routingKey))
+            //                routingKey = addr.RoutingKeys;
+
+            //            if (string.IsNullOrEmpty(routingKey) && messageInformation != null)
+            //                routingKey = messageInformation.Messages[0].GetType().FullName;
+
+            //            channel.BasicPublish(addr.Exchange ?? "", routingKey, true, properties, message.Data);
+            //        }
+            //    });
+            //}
         }
 
         private void Discard(object message)
