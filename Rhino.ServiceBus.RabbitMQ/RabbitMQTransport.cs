@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Common.Logging;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
+using RabbitMQ.Client.Exceptions;
 using Rhino.ServiceBus.Impl;
 using Rhino.ServiceBus.Internal;
 using Rhino.ServiceBus.Transport;
@@ -283,48 +284,37 @@ namespace Rhino.ServiceBus.RabbitMQ
         {
             _logger.DebugFormat("SendMessageToQueue({0},{1})", message.MessageId, destination);
             var addr = RabbitMQAddress.From(destination);
-            var tx = RabbitMQTransaction.Current;
-            //if (tx == null)
+            var send = new Action<IModel>(channel =>
             {
-                using (var channel = _connectionProvider.Open(addr, true))
-                {
-                    var properties = channel.CreateBasicProperties();
-                    message.Populate(properties);
+                var properties = channel.CreateBasicProperties();
+                message.Populate(properties);
 
-                    var routingKey = addr.QueueName;
+                var routingKey = addr.QueueName;
 
-                    if (string.IsNullOrEmpty(routingKey))
-                        routingKey = addr.RoutingKeys;
+                if (string.IsNullOrEmpty(routingKey))
+                    routingKey = addr.RoutingKeys;
 
-                    if (string.IsNullOrEmpty(routingKey) && messageInformation != null)
-                        routingKey = messageInformation.Messages[0].GetType().FullName;
+                if (string.IsNullOrEmpty(routingKey) && messageInformation != null)
+                    routingKey = messageInformation.Messages[0].GetType().FullName;
 
-                    channel.BasicPublish(addr.Exchange ?? "", routingKey, true, properties, message.Data);
-                }
+                channel.BasicPublish(addr.Exchange ?? "", routingKey, true, properties, message.Data);
+            });
+            var tx = RabbitMQTransaction.Current;
+            if (tx == null)
+            {
+                using (var channel = _connectionProvider.Open(addr, false))
+                    send(channel);
             }
-            //else
-            //{
-            //    var channel = _connectionProvider.Open(addr, true);
+            else
+            {
+                var channel = _connectionProvider.Open(addr, true);
 
-            //    tx.Enlist(commit =>
-            //    {
-            //        if (commit)
-            //        {
-            //            var properties = channel.CreateBasicProperties();
-            //            message.Populate(properties);
-
-            //            var routingKey = addr.QueueName;
-
-            //            if (string.IsNullOrEmpty(routingKey))
-            //                routingKey = addr.RoutingKeys;
-
-            //            if (string.IsNullOrEmpty(routingKey) && messageInformation != null)
-            //                routingKey = messageInformation.Messages[0].GetType().FullName;
-
-            //            channel.BasicPublish(addr.Exchange ?? "", routingKey, true, properties, message.Data);
-            //        }
-            //    });
-            //}
+                tx.Enlist(commit =>
+                {
+                    if (commit)
+                        send(channel);
+                });
+            }
         }
 
         private void Discard(object message)
