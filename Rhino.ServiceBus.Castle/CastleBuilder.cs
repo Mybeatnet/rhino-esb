@@ -88,7 +88,8 @@ namespace Rhino.ServiceBus.Castle
                     .ImplementedBy<CreateLogQueueAction>(),
                 Component.For<IDeploymentAction>()
                     .ImplementedBy<CreateQueuesAction>(),
-                Component.For<MessageOwnersSelector>()
+                Component.For<IMessageOwnersSelector>()
+                    .ImplementedBy<MessageOwnersSelector>()
                     .DependsOn(new
                     {
                         messageOwners = busConfig.MessageOwners.ToArray(),

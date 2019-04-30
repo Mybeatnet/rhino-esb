@@ -60,7 +60,7 @@ namespace Rhino.ServiceBus.Spring
         {
             var busConfig = (RhinoServiceBusConfiguration) config;
 
-            applicationContext.RegisterSingleton(() =>
+            applicationContext.RegisterSingleton<IMessageOwnersSelector>(() =>
                 new MessageOwnersSelector(busConfig.MessageOwners.ToArray(),
                     applicationContext.Get<IEndpointRouter>()));
 
@@ -70,7 +70,7 @@ namespace Rhino.ServiceBus.Spring
                     applicationContext.Get<ISubscriptionStorage>(),
                     applicationContext.Get<IReflection>(),
                     applicationContext.GetAll<IMessageModule>().ToArray(),
-                    applicationContext.Get<MessageOwnersSelector>(),
+                    applicationContext.Get<IMessageOwnersSelector>(),
                     applicationContext.Get<IEndpointRouter>(),
                     applicationContext.Get<ISubscribeAction>(),
                     applicationContext.Get<IPublishAction>()));

@@ -79,6 +79,7 @@ namespace Rhino.ServiceBus.Autofac
             var busConfig = (RhinoServiceBusConfiguration)config;
             builder.RegisterType<MessageOwnersSelector>()
                 .WithParameter("messageOwners", busConfig.MessageOwners.ToArray())
+                .AsImplementedInterfaces()
                 .SingleInstance();
             builder.RegisterType<DefaultServiceBus>()
                 .AsImplementedInterfaces()

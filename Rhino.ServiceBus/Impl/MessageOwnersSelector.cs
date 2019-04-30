@@ -6,7 +6,7 @@ using Rhino.ServiceBus.Internal;
 
 namespace Rhino.ServiceBus.Impl
 {
-    public class MessageOwnersSelector
+    public class MessageOwnersSelector : IMessageOwnersSelector
     {
         private readonly IEndpointRouter endpointRouter;
         private readonly MessageOwner[] messageOwners;

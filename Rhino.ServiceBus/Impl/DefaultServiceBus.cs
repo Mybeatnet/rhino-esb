@@ -21,7 +21,7 @@ namespace Rhino.ServiceBus.Impl
         private readonly IReflection reflection;
         private readonly ISubscriptionStorage subscriptionStorage;
         private readonly ITransport transport;
-        private readonly MessageOwnersSelector messageOwners;
+        private readonly IMessageOwnersSelector messageOwners;
     	[ThreadStatic] public static object currentMessage;
         private readonly IEndpointRouter endpointRouter;
         private readonly ISubscribeAction subscribeAction;
@@ -34,7 +34,7 @@ namespace Rhino.ServiceBus.Impl
             ISubscriptionStorage subscriptionStorage,
             IReflection reflection,
             IMessageModule[] modules,
-            MessageOwnersSelector messageOwners, 
+            IMessageOwnersSelector messageOwners, 
             IEndpointRouter endpointRouter, 
             ISubscribeAction subscribeAction,
             IPublishAction publishAction)

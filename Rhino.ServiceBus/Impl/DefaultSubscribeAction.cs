@@ -11,9 +11,9 @@ namespace Rhino.ServiceBus.Impl
         private readonly ILog _logger = LogManager.GetLogger(typeof(DefaultSubscribeAction));
         private IServiceBus _bus;
         private readonly IEndpointRouter _endpointRouter;
-        private readonly MessageOwnersSelector _messageOwners;
+        private readonly IMessageOwnersSelector _messageOwners;
 
-        public DefaultSubscribeAction(IEndpointRouter endpointRouter, MessageOwnersSelector messageOwners)
+        public DefaultSubscribeAction(IEndpointRouter endpointRouter, IMessageOwnersSelector messageOwners)
         {
             _endpointRouter = endpointRouter;
             _messageOwners = messageOwners;

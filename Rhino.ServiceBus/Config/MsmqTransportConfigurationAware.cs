@@ -97,7 +97,7 @@ namespace Rhino.ServiceBus.Config
 
             b.RegisterSingleton<ISubscribeAction>(() => new DefaultSubscribeAction(
                 l.Resolve<IEndpointRouter>(),
-                l.Resolve<MessageOwnersSelector>()));
+                l.Resolve<IMessageOwnersSelector>()));
 
             b.RegisterSingleton<IPublishAction>(() => new DefaultPublishAction(
                 l.Resolve<ITransport>(),

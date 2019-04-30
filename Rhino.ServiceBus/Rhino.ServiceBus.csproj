@@ -185,6 +185,7 @@
     <Compile Include="Impl\EndpointRouter.cs" />
     <Compile Include="Endpoint.cs" />
     <Compile Include="Config\IBusContainerBuilder.cs" />
+    <Compile Include="Impl\IMessageOwnersSelector.cs" />
     <Compile Include="Internal\IEndpointRouter.cs" />
     <Compile Include="Internal\IHandler.cs" />
     <Compile Include="Internal\IPublishAction.cs" />

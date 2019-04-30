@@ -81,7 +81,7 @@ namespace Rhino.ServiceBus.StructureMap
             container.Configure(c =>
             {
                 c.For<IDeploymentAction>().Use<CreateQueuesAction>();
-                c.For<MessageOwnersSelector>().Singleton().Use<MessageOwnersSelector>()
+                c.For<IMessageOwnersSelector>().Singleton().Use<MessageOwnersSelector>()
                     .Ctor<MessageOwner[]>().Is(busConfig.MessageOwners.ToArray());
                 c.For<IStartableServiceBus>().Singleton().Use<DefaultServiceBus>();
                 c.Forward<IStartableServiceBus, IStartable>();

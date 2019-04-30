@@ -68,7 +68,7 @@ namespace Rhino.ServiceBus.Unity
             container.RegisterType<IDeploymentAction, CreateQueuesAction>(Guid.NewGuid().ToString(),
                 new ContainerControlledLifetimeManager());
 
-            container.RegisterType<MessageOwnersSelector, MessageOwnersSelector>(
+            container.RegisterType<IMessageOwnersSelector, MessageOwnersSelector>(
                 new ContainerControlledLifetimeManager(),
                 new InjectionConstructor(
                     new InjectionParameter<MessageOwner[]>(busConfig.MessageOwners.ToArray()),
@@ -84,7 +84,7 @@ namespace Rhino.ServiceBus.Unity
                         new ResolvedParameter<ISubscriptionStorage>(),
                         new ResolvedParameter<IReflection>(),
                         new ResolvedParameter<IMessageModule[]>(),
-                        new ResolvedParameter<MessageOwnersSelector>(),
+                        new ResolvedParameter<IMessageOwnersSelector>(),
                         new ResolvedParameter<IEndpointRouter>(),
                         new ResolvedParameter<ISubscribeAction>(),
                         new ResolvedParameter<IPublishAction>()))
