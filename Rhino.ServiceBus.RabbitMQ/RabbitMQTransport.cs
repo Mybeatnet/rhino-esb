@@ -1,12 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
 using Common.Logging;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
-using RabbitMQ.Client.Exceptions;
 using Rhino.ServiceBus.Impl;
 using Rhino.ServiceBus.Internal;
 using Rhino.ServiceBus.Transport;
@@ -21,11 +18,11 @@ namespace Rhino.ServiceBus.RabbitMQ
         [ThreadStatic] private static RabbitMQCurrentMessageInformation _currentMessageInformation;
 
         private readonly RabbitMQConnectionProvider _connectionProvider;
+        private readonly RabbitMQErrorAction _errorAction;
         private readonly IMessageBuilder<RabbitMQMessage> _messageBuilder;
         private readonly RabbitMQQueueStrategy _queueStrategy;
         private readonly IMessageSerializer _serializer;
         private readonly ITransactionStrategy _txStrategy;
-        private readonly RabbitMQErrorAction _errorAction;
 
         private RabbitMQConsumer _consumer;
 
@@ -109,7 +106,7 @@ namespace Rhino.ServiceBus.RabbitMQ
                 Priority = priority
             };
             var message = _messageBuilder.BuildFromMessageBatch(messageInformation);
-            var delay = (int)Math.Max(processAgainAt.Subtract(DateTime.Now).TotalMilliseconds, 0);
+            var delay = (int) Math.Max(processAgainAt.Subtract(DateTime.Now).TotalMilliseconds, 0);
             if (delay > 100)
             {
                 message.Headers["x-delay"] = delay;
@@ -119,12 +116,14 @@ namespace Rhino.ServiceBus.RabbitMQ
                 SendMessageToQueue(message, t.ToUri(), messageInformation);
             }
             else
+            {
                 SendMessageToQueue(message, endpoint.Uri, messageInformation);
+            }
         }
 
         public void Reply(params object[] messages)
         {
-            Send(new Endpoint { Uri = _currentMessageInformation.Source }, messages, RhinoMessagePriority.Normal);
+            Send(new Endpoint {Uri = _currentMessageInformation.Source}, messages, RhinoMessagePriority.Normal);
         }
 
         public event Action<CurrentMessageInformation> MessageSent;
@@ -150,7 +149,7 @@ namespace Rhino.ServiceBus.RabbitMQ
             {
                 _logger.DebugFormat("Received message {0}", arg.BasicProperties.MessageId);
 
-                var msgType = (MessageType)Convert.ToInt32(arg.BasicProperties.Headers["MessageType"]);
+                var msgType = (MessageType) Convert.ToInt32(arg.BasicProperties.Headers["MessageType"]);
                 switch (msgType)
                 {
                     case MessageType.AdministrativeMessageMarker:
@@ -162,7 +161,10 @@ namespace Rhino.ServiceBus.RabbitMQ
                         break;
                     case MessageType.ShutDownMessageMarker:
                         using (var tx = RabbitMQTransaction.Current)
+                        {
                             tx.Complete();
+                        }
+
                         break;
 
                     case MessageType.TimeoutMessageMarker:
@@ -193,12 +195,14 @@ namespace Rhino.ServiceBus.RabbitMQ
             Action<CurrentMessageInformation, Exception> messageCompleted,
             Action<CurrentMessageInformation> beforeTransactionCommit,
             Action<CurrentMessageInformation> beforeTransactionRollback)
-        {            
+        {
+            _logger.DebugFormat("Processing message {0}", arg.DeliveryTag);
+
             var rabbitMsg = new RabbitMQMessage(arg);
 
             Exception exception = null;
             var msgInfo = CreateMessageInfo(model, arg, rabbitMsg, null, null);
-            
+
 
             // transaction is disposed (rolledback or committed in MessageHandlingCompletion
 
@@ -222,8 +226,6 @@ namespace Rhino.ServiceBus.RabbitMQ
                         msgInfo = CreateMessageInfo(model, arg, rabbitMsg, messages, msg);
 
                         _currentMessageInformation = msgInfo;
-
-                        _logger.DebugFormat("Processing message {0} from {1}", msg, msgInfo.Source);
 
                         if (TransportUtil.ProcessSingleMessage(msgInfo, messageRecieved) == false)
                             Discard(msgInfo.Message);
@@ -284,7 +286,7 @@ namespace Rhino.ServiceBus.RabbitMQ
         {
             _logger.DebugFormat("SendMessageToQueue({0},{1})", message.MessageId, destination);
             var addr = RabbitMQAddress.From(destination);
-            var send = new Action<IModel>(channel =>
+            using (var channel = _connectionProvider.Open(addr, true))
             {
                 var properties = channel.CreateBasicProperties();
                 message.Populate(properties);
@@ -298,22 +300,6 @@ namespace Rhino.ServiceBus.RabbitMQ
                     routingKey = messageInformation.Messages[0].GetType().FullName;
 
                 channel.BasicPublish(addr.Exchange ?? "", routingKey, true, properties, message.Data);
-            });
-            var tx = RabbitMQTransaction.Current;
-            if (tx == null)
-            {
-                using (var channel = _connectionProvider.Open(addr, false))
-                    send(channel);
-            }
-            else
-            {
-                var channel = _connectionProvider.Open(addr, true);
-
-                tx.Enlist(commit =>
-                {
-                    if (commit)
-                        send(channel);
-                });
             }
         }
 
@@ -321,7 +307,7 @@ namespace Rhino.ServiceBus.RabbitMQ
         {
             _logger.DebugFormat("Discarding message {0} ({1}) because there are no consumers for it.",
                 message, _currentMessageInformation.TransportMessageId);
-            Send(new Endpoint { Uri = _queueStrategy.DiscardedQueue }, new[] { message }, RhinoMessagePriority.Low);
+            Send(new Endpoint {Uri = _queueStrategy.DiscardedQueue}, new[] {message}, RhinoMessagePriority.Low);
         }
 
 
