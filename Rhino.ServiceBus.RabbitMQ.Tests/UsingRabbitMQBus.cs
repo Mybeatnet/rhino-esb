@@ -207,17 +207,19 @@ namespace Rhino.ServiceBus.RabbitMQ.Tests
             Assert.True(StringConsumer.Date >= sendTime, 
                 $"Received delayed message {sendTime.Subtract(StringConsumer.Date).TotalSeconds} s before {sendTime}");
         }
-    }
 
-    public class SubscribeToMeConsumer : Consumer<SubscribeToMe>.SkipAutomaticSubscription
-    {
-        public static string Data { get; set; }
-        public static AutoResetEvent Wait { get;  } = new AutoResetEvent(false);
-
-        public void Consume(SubscribeToMe message)
+        [Fact]
+        public void Can_use_instance_subscriptions()
         {
-            Data = message.Data;
-            Wait.Set();
+            var inst = new InstanceConsumer();
+            int result = 0;
+            using (bus.AddInstanceSubscription(inst))
+            {
+                bus.SendToSelf(10);
+                result = inst.Wait();
+            }
+
+            Assert.Equal(10, result);
         }
     }
 }

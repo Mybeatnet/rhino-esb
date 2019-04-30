@@ -77,8 +77,10 @@ namespace Rhino.ServiceBus.Autofac
         {
             var builder = new ContainerBuilder();
             var busConfig = (RhinoServiceBusConfiguration)config;
-            builder.RegisterType<DefaultServiceBus>()
+            builder.RegisterType<MessageOwnersSelector>()
                 .WithParameter("messageOwners", busConfig.MessageOwners.ToArray())
+                .SingleInstance();
+            builder.RegisterType<DefaultServiceBus>()
                 .AsImplementedInterfaces()
                 .SingleInstance();
             builder.RegisterType<CreateLogQueueAction>()

@@ -193,9 +193,7 @@ namespace Rhino.ServiceBus.RabbitMQ
             Action<CurrentMessageInformation, Exception> messageCompleted,
             Action<CurrentMessageInformation> beforeTransactionCommit,
             Action<CurrentMessageInformation> beforeTransactionRollback)
-        {
-            _logger.DebugFormat("Processing message {0}", arg.DeliveryTag);
-
+        {            
             var rabbitMsg = new RabbitMQMessage(arg);
 
             Exception exception = null;
@@ -224,6 +222,8 @@ namespace Rhino.ServiceBus.RabbitMQ
                         msgInfo = CreateMessageInfo(model, arg, rabbitMsg, messages, msg);
 
                         _currentMessageInformation = msgInfo;
+
+                        _logger.DebugFormat("Processing message {0} from {1}", msg, msgInfo.Source);
 
                         if (TransportUtil.ProcessSingleMessage(msgInfo, messageRecieved) == false)
                             Discard(msgInfo.Message);

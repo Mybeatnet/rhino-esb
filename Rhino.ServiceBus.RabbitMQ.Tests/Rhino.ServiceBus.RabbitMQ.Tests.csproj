@@ -149,7 +149,9 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="InstanceConsumer.cs" />
     <Compile Include="SubscribeToMe.cs" />
+    <Compile Include="SubscribeToMeConsumer.cs" />
     <Compile Include="UsingRabbitMQBus.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

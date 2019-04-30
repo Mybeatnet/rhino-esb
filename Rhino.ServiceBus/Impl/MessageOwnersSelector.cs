@@ -1,16 +1,15 @@
 using System;
-using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
 using Rhino.ServiceBus.Exceptions;
 using Rhino.ServiceBus.Internal;
-using System.Collections.Generic;
 
 namespace Rhino.ServiceBus.Impl
 {
     public class MessageOwnersSelector
     {
-        private readonly MessageOwner[] messageOwners;
         private readonly IEndpointRouter endpointRouter;
+        private readonly MessageOwner[] messageOwners;
 
         public MessageOwnersSelector(
             MessageOwner[] messageOwners,

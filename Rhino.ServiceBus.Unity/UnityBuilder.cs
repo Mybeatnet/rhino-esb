@@ -1,7 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Messaging;
-using System.Transactions;
+using System.Reflection;
 using Microsoft.Practices.Unity;
 using Rhino.ServiceBus.Actions;
 using Rhino.ServiceBus.Config;
@@ -12,20 +13,14 @@ using Rhino.ServiceBus.Internal;
 using Rhino.ServiceBus.LoadBalancer;
 using Rhino.ServiceBus.MessageModules;
 using Rhino.ServiceBus.Msmq;
-using Rhino.ServiceBus.Msmq.TransportActions;
-using ErrorAction = Rhino.ServiceBus.Msmq.TransportActions.ErrorAction;
-using IStartable = Rhino.ServiceBus.Internal.IStartable;
-using LoadBalancerConfiguration = Rhino.ServiceBus.LoadBalancer.LoadBalancerConfiguration;
-using System.Reflection;
-using System.Collections.Generic;
 using Rhino.ServiceBus.Transport;
 
 namespace Rhino.ServiceBus.Unity
 {
     public class UnityBuilder : IBusContainerBuilder
     {
-        private readonly IUnityContainer container;
         private readonly AbstractRhinoServiceBusConfiguration config;
+        private readonly IUnityContainer container;
 
         public UnityBuilder(IUnityContainer container, AbstractRhinoServiceBusConfiguration config)
         {
@@ -54,21 +49,32 @@ namespace Rhino.ServiceBus.Unity
 
             foreach (var messageModule in config.MessageModules)
             {
-                Type module = messageModule;
+                var module = messageModule;
                 if (!container.IsRegistered(module))
-                    container.RegisterType(typeof(IMessageModule), module, module.FullName, new ContainerControlledLifetimeManager());
+                    container.RegisterType(typeof(IMessageModule), module, module.FullName,
+                        new ContainerControlledLifetimeManager());
             }
 
             container.RegisterType<IReflection, DefaultReflection>(new ContainerControlledLifetimeManager());
-            container.RegisterType(typeof(IMessageSerializer), config.SerializerType, new ContainerControlledLifetimeManager());
+            container.RegisterType(typeof(IMessageSerializer), config.SerializerType,
+                new ContainerControlledLifetimeManager());
             container.RegisterType<IEndpointRouter, EndpointRouter>(new ContainerControlledLifetimeManager());
         }
 
         public void RegisterBus()
         {
-            var busConfig = (RhinoServiceBusConfiguration)config;
+            var busConfig = (RhinoServiceBusConfiguration) config;
 
-            container.RegisterType<IDeploymentAction, CreateQueuesAction>(Guid.NewGuid().ToString(), new ContainerControlledLifetimeManager());
+            container.RegisterType<IDeploymentAction, CreateQueuesAction>(Guid.NewGuid().ToString(),
+                new ContainerControlledLifetimeManager());
+
+            container.RegisterType<MessageOwnersSelector, MessageOwnersSelector>(
+                new ContainerControlledLifetimeManager(),
+                new InjectionConstructor(
+                    new InjectionParameter<MessageOwner[]>(busConfig.MessageOwners.ToArray()),
+                    new ResolvedParameter<IEndpointRouter>()
+                )
+            );
 
             container.RegisterType<DefaultServiceBus>(new ContainerControlledLifetimeManager())
                 .RegisterType<IStartableServiceBus, DefaultServiceBus>(
@@ -78,7 +84,7 @@ namespace Rhino.ServiceBus.Unity
                         new ResolvedParameter<ISubscriptionStorage>(),
                         new ResolvedParameter<IReflection>(),
                         new ResolvedParameter<IMessageModule[]>(),
-                        new InjectionParameter<MessageOwner[]>(busConfig.MessageOwners.ToArray()),
+                        new ResolvedParameter<MessageOwnersSelector>(),
                         new ResolvedParameter<IEndpointRouter>(),
                         new ResolvedParameter<ISubscribeAction>(),
                         new ResolvedParameter<IPublishAction>()))
@@ -88,47 +94,49 @@ namespace Rhino.ServiceBus.Unity
 
         public void RegisterPrimaryLoadBalancer()
         {
-            var loadBalancerConfig = (LoadBalancerConfiguration)config;
+            var loadBalancerConfig = (LoadBalancerConfiguration) config;
             container.RegisterType<MsmqLoadBalancer>(
-                new ContainerControlledLifetimeManager(),
-                new InjectionConstructor(
-                    new ResolvedParameter<IMessageSerializer>(),
-                    new ResolvedParameter<IQueueStrategy>(),
-                    new ResolvedParameter<IEndpointRouter>(),
-                    new InjectionParameter<Uri>(loadBalancerConfig.Endpoint),
-                    new InjectionParameter<int>(loadBalancerConfig.ThreadCount),
-                    new InjectionParameter<Uri>(loadBalancerConfig.SecondaryLoadBalancer),
-                    new InjectionParameter<TransactionalOptions>(loadBalancerConfig.Transactional),
-                    new ResolvedParameter<IMessageBuilder<Message>>(),
-                    new ResolvedParameter<ITransactionStrategy>()),
-                new InjectionProperty("ReadyForWorkListener"))
+                    new ContainerControlledLifetimeManager(),
+                    new InjectionConstructor(
+                        new ResolvedParameter<IMessageSerializer>(),
+                        new ResolvedParameter<IQueueStrategy>(),
+                        new ResolvedParameter<IEndpointRouter>(),
+                        new InjectionParameter<Uri>(loadBalancerConfig.Endpoint),
+                        new InjectionParameter<int>(loadBalancerConfig.ThreadCount),
+                        new InjectionParameter<Uri>(loadBalancerConfig.SecondaryLoadBalancer),
+                        new InjectionParameter<TransactionalOptions>(loadBalancerConfig.Transactional),
+                        new ResolvedParameter<IMessageBuilder<Message>>(),
+                        new ResolvedParameter<ITransactionStrategy>()),
+                    new InjectionProperty("ReadyForWorkListener"))
                 .RegisterType<IStartable, MsmqLoadBalancer>(new ContainerControlledLifetimeManager());
 
-            container.RegisterType<IDeploymentAction, CreateLoadBalancerQueuesAction>(Guid.NewGuid().ToString(), new ContainerControlledLifetimeManager());
+            container.RegisterType<IDeploymentAction, CreateLoadBalancerQueuesAction>(Guid.NewGuid().ToString(),
+                new ContainerControlledLifetimeManager());
         }
 
         public void RegisterSecondaryLoadBalancer()
         {
-            var loadBalancerConfig = (LoadBalancerConfiguration)config;
+            var loadBalancerConfig = (LoadBalancerConfiguration) config;
             container.RegisterType<MsmqSecondaryLoadBalancer>(
-                new ContainerControlledLifetimeManager(),
-                new InjectionConstructor(
-                    new ResolvedParameter<IMessageSerializer>(),
-                    new ResolvedParameter<IQueueStrategy>(),
-                    new ResolvedParameter<IEndpointRouter>(),
-                    new InjectionParameter<Uri>(loadBalancerConfig.Endpoint),
-                    new InjectionParameter<Uri>(loadBalancerConfig.PrimaryLoadBalancer),
-                    new InjectionParameter<int>(loadBalancerConfig.ThreadCount),
-                    new InjectionParameter<TransactionalOptions>(loadBalancerConfig.Transactional),
-                    new ResolvedParameter<IMessageBuilder<Message>>()))
+                    new ContainerControlledLifetimeManager(),
+                    new InjectionConstructor(
+                        new ResolvedParameter<IMessageSerializer>(),
+                        new ResolvedParameter<IQueueStrategy>(),
+                        new ResolvedParameter<IEndpointRouter>(),
+                        new InjectionParameter<Uri>(loadBalancerConfig.Endpoint),
+                        new InjectionParameter<Uri>(loadBalancerConfig.PrimaryLoadBalancer),
+                        new InjectionParameter<int>(loadBalancerConfig.ThreadCount),
+                        new InjectionParameter<TransactionalOptions>(loadBalancerConfig.Transactional),
+                        new ResolvedParameter<IMessageBuilder<Message>>()))
                 .RegisterType<IStartable, MsmqSecondaryLoadBalancer>(new ContainerControlledLifetimeManager());
 
-            container.RegisterType<IDeploymentAction, CreateLoadBalancerQueuesAction>(Guid.NewGuid().ToString(), new ContainerControlledLifetimeManager());
+            container.RegisterType<IDeploymentAction, CreateLoadBalancerQueuesAction>(Guid.NewGuid().ToString(),
+                new ContainerControlledLifetimeManager());
         }
 
         public void RegisterReadyForWork()
         {
-            var loadBalancerConfig = (LoadBalancerConfiguration)config;
+            var loadBalancerConfig = (LoadBalancerConfiguration) config;
             container.RegisterType<MsmqReadyForWorkListener>(
                 new ContainerControlledLifetimeManager(),
                 new InjectionConstructor(
@@ -141,7 +149,8 @@ namespace Rhino.ServiceBus.Unity
                     new ResolvedParameter<IMessageBuilder<Message>>(),
                     new ResolvedParameter<ITransactionStrategy>()));
 
-            container.RegisterType<IDeploymentAction, CreateReadyForWorkQueuesAction>(Guid.NewGuid().ToString(), new ContainerControlledLifetimeManager());
+            container.RegisterType<IDeploymentAction, CreateReadyForWorkQueuesAction>(Guid.NewGuid().ToString(),
+                new ContainerControlledLifetimeManager());
         }
 
         public void RegisterLoadBalancerEndpoint(Uri loadBalancerEndpoint)
@@ -175,15 +184,22 @@ namespace Rhino.ServiceBus.Unity
             T singleton = null;
             container.RegisterType<T>(new InjectionFactory(x => singleton == null ? singleton = func() : singleton));
         }
+
         public void RegisterSingleton<T>(string name, Func<T> func)
             where T : class
         {
             T singleton = null;
-            container.RegisterType<T>(name, new InjectionFactory(x => singleton == null ? singleton = func() : singleton));
+            container.RegisterType<T>(name,
+                new InjectionFactory(x => singleton == null ? singleton = func() : singleton));
         }
 
         public void RegisterAll<T>(params Type[] excludes)
-            where T : class { RegisterAll<T>((Predicate<Type>)(x => !x.IsAbstract && !x.IsInterface && typeof(T).IsAssignableFrom(x) && !excludes.Contains(x))); }
+            where T : class
+        {
+            RegisterAll<T>(x =>
+                !x.IsAbstract && !x.IsInterface && typeof(T).IsAssignableFrom(x) && !excludes.Contains(x));
+        }
+
         public void RegisterAll<T>(Predicate<Type> condition)
             where T : class
         {
@@ -201,7 +217,8 @@ namespace Rhino.ServiceBus.Unity
                 new ContainerControlledLifetimeManager(),
                 new InjectionConstructor(
                     new ResolvedParameter<IEncryptionService>("esb.security")));
-            container.RegisterType<IElementSerializationBehavior, WireEncryptedMessageConvertor>("WireEncryptedMessageConvertor",
+            container.RegisterType<IElementSerializationBehavior, WireEncryptedMessageConvertor>(
+                "WireEncryptedMessageConvertor",
                 new ContainerControlledLifetimeManager(),
                 new InjectionConstructor(
                     new ResolvedParameter<IEncryptionService>("esb.security")));
@@ -211,7 +228,8 @@ namespace Rhino.ServiceBus.Unity
         {
             container.RegisterType<IValueConvertor<WireEncryptedString>, ThrowingWireEncryptedStringConvertor>(
                 new ContainerControlledLifetimeManager());
-            container.RegisterType<IElementSerializationBehavior, ThrowingWireEncryptedMessageConvertor>("ThrowingWireEncryptedMessageConvertor",
+            container.RegisterType<IElementSerializationBehavior, ThrowingWireEncryptedMessageConvertor>(
+                "ThrowingWireEncryptedMessageConvertor",
                 new ContainerControlledLifetimeManager());
         }
     }

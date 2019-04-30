@@ -45,23 +45,37 @@ namespace Rhino.ServiceBus.Tests.LocalMsmqTransactions
 
         }
 
-        [Fact]
+        [Fact]        
         public void Bus_will_not_hold_reference_to_consumer()
-        {
+        {            
             using (var bus = container.Resolve<IStartableServiceBus>())
             {
                 bus.Start();
 
-                var weakConsumer = new WeakReference(new PingConsumer(bus));
 
-                using (bus.AddInstanceSubscription((IMessageConsumer)weakConsumer.Target))
+                WeakReference weakConsumer;
+
+                using (WeakSubscribe(bus, out weakConsumer))
                 {
                 }
-                GC.Collect(2);
+                GC.Collect(2, GCCollectionMode.Forced, true, true);
                 GC.WaitForPendingFinalizers();
-
+                
                 Assert.False(weakConsumer.IsAlive);
             }
+        }
+
+        /// <summary>
+        /// Separate method so that no local variable is held for PingConsumer preventing it from being garbage collected
+        /// </summary>
+        /// <param name="bus"></param>
+        /// <param name="weakRef"></param>
+        /// <returns></returns>
+        private IDisposable WeakSubscribe(IServiceBus bus, out WeakReference weakRef)
+        {
+            var consumer = new PingConsumer(bus);
+            weakRef = new WeakReference(consumer);
+            return bus.AddInstanceSubscription(consumer);
         }
 
         [Fact]
