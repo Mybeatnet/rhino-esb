@@ -160,6 +160,10 @@
       <Project>{4d65e756-c0c9-42aa-9b73-75e85e77ea7b}</Project>
       <Name>Rhino.ServiceBus.Castle</Name>
     </ProjectReference>
+    <ProjectReference Include="..\Rhino.ServiceBus.Inbox\Rhino.ServiceBus.Inbox.csproj">
+      <Project>{C8110980-397D-41A1-A02C-81C4402EAB35}</Project>
+      <Name>Rhino.ServiceBus.Inbox</Name>
+    </ProjectReference>
     <ProjectReference Include="..\Rhino.ServiceBus.RabbitMQ\Rhino.ServiceBus.RabbitMQ.csproj">
       <Project>{28827711-5faa-4845-af3a-f57916600fa2}</Project>
       <Name>Rhino.ServiceBus.RabbitMQ</Name>

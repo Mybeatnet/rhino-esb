@@ -6,6 +6,7 @@ using System.Threading;
 using Castle.MicroKernel.Registration;
 using Castle.Windsor;
 using Rhino.ServiceBus.Impl;
+using Rhino.ServiceBus.Inbox;
 using Rhino.ServiceBus.Internal;
 using Rhino.ServiceBus.Transport;
 using Xunit;
@@ -24,6 +25,7 @@ namespace Rhino.ServiceBus.RabbitMQ.Tests
             container = new WindsorContainer();
             new RhinoServiceBusConfiguration()
                 .UseRabbitMQ()
+                .UseInbox()
                 .UseCastleWindsor(container)
                 .UseStandaloneConfigurationFile("RabbitMQ.config")
                 .Configure();
@@ -31,6 +33,7 @@ namespace Rhino.ServiceBus.RabbitMQ.Tests
             container.Register(Component.For<ThrowingIntConsumer>());
             container.Register(Component.For<SubscribeToMeConsumer>());
             bus = container.Resolve<IStartableServiceBus>();
+            container.Resolve<RabbitMQConnectionProvider>().PurgeQueue(RabbitMQAddress.From(bus.Endpoint.Uri));
             bus.Start();
             var queues = container.Resolve<RabbitMQQueueStrategy>();
             queues.PurgeAll();

@@ -1,4 +1,5 @@
-﻿using System.Configuration;
+﻿using System;
+using System.Configuration;
 using System.Net.Security;
 using System.Security.Authentication;
 using Rhino.ServiceBus.Config;
@@ -11,6 +12,50 @@ namespace Rhino.ServiceBus.RabbitMQ
         public RabbitMQElement RabbitMQ
         {
             get { return this["rabbitmq"] as RabbitMQElement; }
+        }
+
+        [ConfigurationProperty("inbox")]
+        public InboxElement Inbox
+        {
+            get { return this["inbox"] as InboxElement; }
+        }
+
+        public class InboxElement : ConfigurationElement
+        {
+            [ConfigurationProperty("connectionStringName", DefaultValue = "RsbInbox")]
+            public string ConnectionStringName
+            {
+                get { return (string) this["connectionStringName"]; }
+                set { this["connectionStringName"] = value; }
+            }
+
+            [ConfigurationProperty("tablePrefix", DefaultValue = "rsbinbox")]
+            public string TablePrefix
+            {
+                get { return (string) this["tablePrefix"]; }
+                set { this["tablePrefix"] = value; }
+            }
+
+            [ConfigurationProperty("cleanupAge", DefaultValue = "1:00:00")]
+            public string CleanupAge
+            {
+                get { return (string) this["cleanupAge"]; }
+                set { this["cleanupAge"] = value; }
+            }
+
+            [ConfigurationProperty("cleanupRows", DefaultValue = 10000)]
+            public int CleanupRows
+            {
+                get { return (int) this["cleanupRows"]; }
+                set { this["cleanupRows"] = value; }
+            }
+
+            [ConfigurationProperty("enabled", DefaultValue = true)]
+            public bool Enabled
+            {
+                get { return (bool) this["enabled"]; }
+                set { this["enabled"] = value; }
+            }
         }
 
         public class RabbitMQElement : ConfigurationElement
