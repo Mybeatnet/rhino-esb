@@ -57,7 +57,10 @@ namespace Rhino.ServiceBus.Inbox
                         if (locked)
                         {
                             if (cleanup.ScheduleCleanup())
-                                _bus.SendToSelf(new CleanupInboxMessage { Date = DateTime.Today.AddDays(-7) });
+                                _bus.SendToSelf(new CleanupInboxMessage
+                                {
+                                    Date = DateTime.Now.Subtract(_inboxFactory.CleanupAge)
+                                });
                             cleanup.Commit();
                         }
                     }
@@ -83,9 +86,9 @@ namespace Rhino.ServiceBus.Inbox
         {
             var inbox = _inboxFactory.CreateInbox();
 
-            var succeeded = inbox.Insert(DateTime.Now, cmi.MessageId);
-
             _currentInbox.Value = inbox;
+
+            var succeeded = inbox.Insert(DateTime.Now, cmi.MessageId);
 
             if (!succeeded)
                 return true;
@@ -127,8 +130,7 @@ namespace Rhino.ServiceBus.Inbox
 
         private void ProcessCleanupInbox(CleanupInboxMessage msg)
         {
-            var date = msg.Date.Subtract(_inboxFactory.CleanupAge);
-            var rows = _currentInbox.Value.Cleanup(date, _inboxFactory.CleanupRows);
+            var rows = _currentInbox.Value.Cleanup(msg.Date, _inboxFactory.CleanupRows);
             // if we have processed the same number of rows as requested then there might be more rows to delete
             if (rows == _inboxFactory.CleanupRows)
                 _bus.SendToSelf(msg);

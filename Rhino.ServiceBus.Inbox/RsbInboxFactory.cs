@@ -44,7 +44,7 @@ namespace Rhino.ServiceBus.Inbox
             }
         }
 
-        private MySqlConnection Connect()
+        public MySqlConnection Connect()
         {
             var con = new MySqlConnection(_connectionString);
             con.Open();
