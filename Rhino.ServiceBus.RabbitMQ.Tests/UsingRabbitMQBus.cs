@@ -22,6 +22,12 @@ namespace Rhino.ServiceBus.RabbitMQ.Tests
             StringConsumer.Value = null;
             StringConsumer.Wait = new AutoResetEvent(false);
 
+            using (var cp = new RabbitMQConnectionProvider(new RabbitMQConfiguration()))
+            {
+                cp.DeclareQueue(RabbitMQAddress.FromString("rmq://localhost/test_queue"), "test_queue", true);
+                cp.PurgeQueue(RabbitMQAddress.FromString("rmq://localhost/test_queue"));
+            }
+
             container = new WindsorContainer();
             new RhinoServiceBusConfiguration()
                 .UseRabbitMQ()
