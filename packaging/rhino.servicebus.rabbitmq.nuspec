@@ -14,6 +14,7 @@
     <tags>rhino servicebus bus msmq messaging cqrs async queue publish subscribe pub sub</tags>
     <dependencies>
       <dependency id="Rhino.ServiceBus" version="$version$"/>
+	  <dependency id="Microsoft.Diagnostics.Tracing.EventSource.Redist" version="1.1.28" />
       <dependency id="RabbitMQ.Client" version="5.0.1"/>	  
     </dependencies>
   </metadata>

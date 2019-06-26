@@ -15,6 +15,7 @@
     <dependencies>
       <dependency id="Rhino.ServiceBus" version="$version$"/>
 	  <dependency id="Rhino.ServiceBus.RabbitMQ" version="$version$"/>
+	  <dependency id="MySql.Data" version=">=6.10.8" />
     </dependencies>
   </metadata>
   <files>
