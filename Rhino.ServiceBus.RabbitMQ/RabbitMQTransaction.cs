@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using Common.Logging;
 using RabbitMQ.Client;
 using Rhino.ServiceBus.Transport;
@@ -11,17 +12,15 @@ namespace Rhino.ServiceBus.RabbitMQ
     {
         private static readonly ILog _log = LogManager.GetLogger<RabbitMQTransaction>();
 
-        [ThreadStatic] private static RabbitMQTransaction _current;
+        private static readonly AsyncLocal<RabbitMQTransaction> _current = new AsyncLocal<RabbitMQTransaction>();
+
         private bool _commit;
         private Action<bool> _completions;
         private bool _disposed;
 
         private readonly ISet<IModel> _models = new HashSet<IModel>();
 
-        public static RabbitMQTransaction Current
-        {
-            get { return _current; }
-        }
+        public static RabbitMQTransaction Current => _current.Value;
 
         public void Dispose()
         {
@@ -47,7 +46,7 @@ namespace Rhino.ServiceBus.RabbitMQ
                     _completions = null;
                 }
 
-                _current = null;
+                _current.Value = null;
                 foreach (var model in _models)
                 {
                     if (_commit)
@@ -72,7 +71,7 @@ namespace Rhino.ServiceBus.RabbitMQ
         public static RabbitMQTransaction Begin()
         {
             var tx = new RabbitMQTransaction();
-            _current = tx;
+            _current.Value = tx;
             return tx;
         }
 

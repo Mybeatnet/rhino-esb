@@ -3,7 +3,7 @@
 namespace Rhino.ServiceBus.Transport
 {
     public interface ITransactionStrategy
-    {
+    {        
         IRsbTransaction Begin();
     }
 

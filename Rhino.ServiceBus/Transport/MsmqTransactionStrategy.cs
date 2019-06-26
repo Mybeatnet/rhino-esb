@@ -1,5 +1,6 @@
 using System;
 using System.Messaging;
+using System.Threading;
 using System.Web;
 
 namespace Rhino.ServiceBus.Transport
@@ -8,18 +9,15 @@ namespace Rhino.ServiceBus.Transport
     {
         private static readonly string Key = typeof(MsmqTransactionStrategy).FullName + ".Current";
 
-        [ThreadStatic] private static RsbTransaction _currentTx;
+        private static readonly AsyncLocal<RsbTransaction> _currentTx = new AsyncLocal<RsbTransaction>();
 
-        public static MessageQueueTransaction Current
-        {
-            get { return GetTx(); }
-        }
+        public static MessageQueueTransaction Current => GetTx();
 
         public IRsbTransaction Begin()
         {
             var tx = new MessageQueueTransaction();
             tx.Begin();
-            return _currentTx = new RsbTransaction(tx);
+            return _currentTx.Value = new RsbTransaction(tx);
         }
 
         public void Send(MessageQueue queue, Message msg)
@@ -34,7 +32,7 @@ namespace Rhino.ServiceBus.Transport
         private static MessageQueueTransaction GetTx()
         {
             if (HttpContext.Current == null)
-                return _currentTx == null ? null : _currentTx.Transaction;
+                return _currentTx == null ? null : _currentTx.Value.Transaction;
 
             var tx = (RsbTransaction) HttpContext.Current.Items[Key];
             return tx == null ? null : tx.Transaction;
@@ -69,7 +67,7 @@ namespace Rhino.ServiceBus.Transport
 
             public void Dispose()
             {
-                _currentTx = null;
+                _currentTx.Value = null;
                 if (Transaction.Status == MessageQueueTransactionStatus.Pending)
                     Transaction.Abort();
                 Transaction.Dispose();
