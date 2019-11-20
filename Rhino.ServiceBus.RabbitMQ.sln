@@ -15,6 +15,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rhino.ServiceBus.RabbitMQ.T
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rhino.ServiceBus.Inbox", "Rhino.ServiceBus.Inbox\Rhino.ServiceBus.Inbox.csproj", "{C8110980-397D-41A1-A02C-81C4402EAB35}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rhino.ServiceBus.MySqlErrors", "Rhino.ServiceBus.MySqlErrors\Rhino.ServiceBus.MySqlErrors.csproj", "{E48677DF-1046-468F-A519-93B6A4CD44C3}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -83,6 +85,18 @@ Global
 		{C8110980-397D-41A1-A02C-81C4402EAB35}.Release|x64.Build.0 = Release|Any CPU
 		{C8110980-397D-41A1-A02C-81C4402EAB35}.Release|x86.ActiveCfg = Release|Any CPU
 		{C8110980-397D-41A1-A02C-81C4402EAB35}.Release|x86.Build.0 = Release|Any CPU
+		{E48677DF-1046-468F-A519-93B6A4CD44C3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E48677DF-1046-468F-A519-93B6A4CD44C3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E48677DF-1046-468F-A519-93B6A4CD44C3}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{E48677DF-1046-468F-A519-93B6A4CD44C3}.Debug|x64.Build.0 = Debug|Any CPU
+		{E48677DF-1046-468F-A519-93B6A4CD44C3}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{E48677DF-1046-468F-A519-93B6A4CD44C3}.Debug|x86.Build.0 = Debug|Any CPU
+		{E48677DF-1046-468F-A519-93B6A4CD44C3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E48677DF-1046-468F-A519-93B6A4CD44C3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E48677DF-1046-468F-A519-93B6A4CD44C3}.Release|x64.ActiveCfg = Release|Any CPU
+		{E48677DF-1046-468F-A519-93B6A4CD44C3}.Release|x64.Build.0 = Release|Any CPU
+		{E48677DF-1046-468F-A519-93B6A4CD44C3}.Release|x86.ActiveCfg = Release|Any CPU
+		{E48677DF-1046-468F-A519-93B6A4CD44C3}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

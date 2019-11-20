@@ -1,18 +1,18 @@
-﻿using Common.Logging;
-using MySql.Data.MySqlClient;
-using System;
+﻿using System;
 using System.Diagnostics;
+using Common.Logging;
+using MySql.Data.MySqlClient;
 
-namespace Rhino.ServiceBus.Inbox
+namespace Rhino.ServiceBus.MySqlErrors
 {
-    public class RsbInbox : IDisposable
+    public class ErrorStorage : IDisposable
     {
         private readonly MySqlConnection _connection;
         private readonly MySqlTransaction _transaction;
         private readonly string _table;
-        private static readonly ILog _log = LogManager.GetLogger<RsbInbox>();
+        private static readonly ILog _log = LogManager.GetLogger<ErrorStorage>();
 
-        public RsbInbox(MySqlConnection connection, MySqlTransaction transaction, string table)
+        public ErrorStorage(MySqlConnection connection, MySqlTransaction transaction, string table)
         {
             _connection = connection;
             _transaction = transaction;
@@ -49,7 +49,7 @@ namespace Rhino.ServiceBus.Inbox
 
         public IDisposable GetCleanupLock(out bool locked)
         {
-            var ret = _connection.ExecuteScalar<int>(_transaction, $"SELECT GET_LOCK('{_table}:Cleanup', 30)");
+            var ret = _connection.ExecuteScalar<long>(_transaction, $"SELECT GET_LOCK('{_table}:Cleanup', 30)");
 
             locked = (ret == 1);
             return Run.OnDispose(() =>

@@ -44,6 +44,9 @@ namespace Rhino.ServiceBus.RabbitMQ
 
         private void ReceiveMessage()
         {
+            if (_threadCount == 0)
+                return;
+
             try
             {
                 var address = RabbitMQAddress.From(_endpoint.Uri);
