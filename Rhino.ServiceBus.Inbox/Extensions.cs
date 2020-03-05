@@ -31,16 +31,14 @@ namespace Rhino.ServiceBus.Inbox
         }
 
 
-        public static T ExecuteScalar<T>(this MySqlConnection self, MySqlTransaction tx, string sql, params MySqlParameter[] args)
+        public static object ExecuteScalar(this MySqlConnection self, MySqlTransaction tx, string sql, params MySqlParameter[] args)
         {
             using (MySqlCommand command = self.CreateCommand(tx, sql, args))
             {
-                var result = command.ExecuteScalar();
-
-                if (result is T)
-                    return (T) result;
-
-                return (T) Convert.ChangeType(result, typeof(T));
+                var ret = command.ExecuteScalar();
+                if (ret == DBNull.Value)
+                    return null;
+                return ret;
             }
         }
 

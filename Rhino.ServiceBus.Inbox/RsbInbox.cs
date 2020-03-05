@@ -49,7 +49,8 @@ namespace Rhino.ServiceBus.Inbox
 
         public IDisposable GetCleanupLock(out bool locked)
         {
-            var ret = _connection.ExecuteScalar<int>(_transaction, $"SELECT GET_LOCK('{_table}:Cleanup', 30)");
+            var ret = Convert.ToInt32(_connection.ExecuteScalar(_transaction,
+                $"SELECT GET_LOCK('{_table}:Cleanup', 30)"));
 
             locked = (ret == 1);
             return Run.OnDispose(() =>
@@ -61,7 +62,7 @@ namespace Rhino.ServiceBus.Inbox
 
         public bool ScheduleCleanup()
         {
-            var lastRun = _connection.ExecuteScalar<DateTime?>(_transaction, $"SELECT LastCleanupDate FROM `{_table}_state` LIMIT 1");
+            var lastRun = (DateTime?)_connection.ExecuteScalar(_transaction, $"SELECT LastCleanupDate FROM `{_table}_state` LIMIT 1");
 
             if (lastRun >= DateTime.Today)
                 return false;
