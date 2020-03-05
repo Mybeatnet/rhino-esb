@@ -9,7 +9,6 @@ namespace Rhino.ServiceBus.RabbitMQ
     public class ModelWrapper : IModel
     {
         private readonly IModel _impl;
-
         public ModelWrapper(IModel model)
         {
             _impl = model;

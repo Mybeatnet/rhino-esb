@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Threading;
 using Common.Logging;
 using RabbitMQ.Client;
 
@@ -9,13 +10,13 @@ namespace Rhino.ServiceBus.RabbitMQ
     [CLSCompliant(false)]
     public class RabbitMQConnectionProvider : IDisposable
     {
-        private static readonly ConcurrentDictionary<string, ConnectionFactory> _connectionFactories
+        private static readonly ConcurrentDictionary<string, ConnectionFactory> ConnectionFactories
             = new ConcurrentDictionary<string, ConnectionFactory>();
 
-        private static readonly ConcurrentDictionary<string, IConnection> _connections
+        private static readonly ConcurrentDictionary<string, IConnection> Connections
             = new ConcurrentDictionary<string, IConnection>();
 
-        [ThreadStatic] private static IDictionary<string, IModel> _models;
+        private static AsyncLocal<IDictionary<string, IModel>> _models = new AsyncLocal<IDictionary<string, IModel>>();
 
         private readonly RabbitMQConfiguration _config;
 
@@ -28,11 +29,11 @@ namespace Rhino.ServiceBus.RabbitMQ
 
         public void Dispose()
         {
-            foreach (var con in _connections.Values)
+            foreach (var con in Connections.Values)
                 con.Dispose();
 
-            _connections.Clear();
-            _connectionFactories.Clear();
+            Connections.Clear();
+            ConnectionFactories.Clear();
         }
 
         public IModel Open(RabbitMQAddress brokerAddress, bool transactional)
@@ -50,8 +51,8 @@ namespace Rhino.ServiceBus.RabbitMQ
         private IModel OpenTransactional(RabbitMQAddress brokerAddress)
         {
             var key = GetKey(brokerAddress);
-            IModel model;
-            if (_models != null && _models.TryGetValue(key, out model))
+            IDictionary<string, IModel> models = _models.Value;
+            if (models != null && models.TryGetValue(key, out var model))
                 return new ModelWrapper(model);
 
             model = OpenNew(brokerAddress);
@@ -60,9 +61,9 @@ namespace Rhino.ServiceBus.RabbitMQ
             RabbitMQTransaction.Current.Add(model);
             model.TxSelect();
             RabbitMQTransaction.Current.Enlist(x => _models = null);
-            if (_models == null)
-                _models = new Dictionary<string, IModel>();
-            _models[key] = model;
+            if (models == null)
+                models = (_models.Value ?? (_models.Value = new Dictionary<string, IModel>()));
+            models[key] = model;
             return new ModelWrapper(model);
         }
 
@@ -92,9 +93,11 @@ namespace Rhino.ServiceBus.RabbitMQ
 
             var key = broker.ToString();
 
-            var factory = _connectionFactories.GetOrAdd(key, s =>
+            var factory = ConnectionFactories.GetOrAdd(key, s =>
             {
-                var f = new ConnectionFactory();                
+                var f = new ConnectionFactory();
+
+                f.RequestedHeartbeat = 5;
 
                 if (brokerAddress.Broker == RabbitMQAddress.Default)
                 {
@@ -130,7 +133,7 @@ namespace Rhino.ServiceBus.RabbitMQ
             var key =
                 $"{protocol}:{broker}:{brokerAddress.VirtualHost}:{brokerAddress.Username}:{brokerAddress.Password}";
 
-            var connection = _connections.GetOrAdd(key, s =>
+            var connection = Connections.GetOrAdd(key, s =>
             {
                 if (brokerAddress.Broker == RabbitMQAddress.Default)
                     return factory.CreateConnection(_config.Endpoints);
@@ -140,7 +143,7 @@ namespace Rhino.ServiceBus.RabbitMQ
             if (!connection.IsOpen)
             {
                 connection = CreateNewConnection(factory, brokerAddress);
-                _connections[key] = connection;
+                Connections[key] = connection;
             }
 
             _log.DebugFormat("Opening new Connection {0} on {1} using {2}",
