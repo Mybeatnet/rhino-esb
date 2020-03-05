@@ -16,7 +16,8 @@ namespace Rhino.ServiceBus.RabbitMQ
         private static readonly ConcurrentDictionary<string, IConnection> Connections
             = new ConcurrentDictionary<string, IConnection>();
 
-        private static AsyncLocal<IDictionary<string, IModel>> _models = new AsyncLocal<IDictionary<string, IModel>>();
+        private static readonly AsyncLocal<IDictionary<string, IModel>> Models 
+            = new AsyncLocal<IDictionary<string, IModel>>();
 
         private readonly RabbitMQConfiguration _config;
 
@@ -51,7 +52,7 @@ namespace Rhino.ServiceBus.RabbitMQ
         private IModel OpenTransactional(RabbitMQAddress brokerAddress)
         {
             var key = GetKey(brokerAddress);
-            IDictionary<string, IModel> models = _models.Value;
+            IDictionary<string, IModel> models = Models.Value;
             if (models != null && models.TryGetValue(key, out var model))
                 return new ModelWrapper(model);
 
@@ -60,9 +61,9 @@ namespace Rhino.ServiceBus.RabbitMQ
 
             RabbitMQTransaction.Current.Add(model);
             model.TxSelect();
-            RabbitMQTransaction.Current.Enlist(x => _models = null);
+            RabbitMQTransaction.Current.Enlist(x => Models.Value = null);
             if (models == null)
-                models = (_models.Value ?? (_models.Value = new Dictionary<string, IModel>()));
+                models = (Models.Value ?? (Models.Value = new Dictionary<string, IModel>()));
             models[key] = model;
             return new ModelWrapper(model);
         }
