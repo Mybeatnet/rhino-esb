@@ -22,7 +22,7 @@ namespace Rhino.ServiceBus.Inbox
         public bool Insert(DateTime date, Guid messageId)
         {
             var rows = _connection.ExecuteNonQuery(_transaction,
-                $@"INSERT INTO `{_table}` (DateReceived, MessageId)
+                $@"INSERT IGNORE INTO `{_table}` (DateReceived, MessageId)
                     SELECT @date, @id
                     FROM DUAL
                     WHERE NOT EXISTS (SELECT 1 FROM `{_table}` WHERE MessageId = @id)",

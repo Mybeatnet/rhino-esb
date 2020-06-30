@@ -32,10 +32,10 @@ namespace Rhino.ServiceBus.Transport
         private static MessageQueueTransaction GetTx()
         {
             if (HttpContext.Current == null)
-                return _currentTx == null ? null : _currentTx.Value.Transaction;
+                return _currentTx?.Value?.Transaction;
 
             var tx = (RsbTransaction) HttpContext.Current.Items[Key];
-            return tx == null ? null : tx.Transaction;
+            return tx?.Transaction;
         }
 
         public Message ReceiveById(MessageQueue queue, string messageId)
